@@ -1,18 +1,23 @@
-export type ParsedPromisesResult<T> = { fulfilled: T[]; rejected: unknown[] };
+import { notNil } from './validation';
+import { ParsedPromisesResult } from './types';
 
 export function pickBy<T extends object>(
   pickFrom: T,
-  keyfn: <K extends keyof T>(value: T[K], key: K) => boolean,
+  predicate: <K extends keyof T>(value: T[K], key: K) => boolean,
 ): Partial<T> {
   const obj: Partial<T> = {};
 
   for (const key in pickFrom) {
-    if (keyfn(pickFrom[key], key)) {
+    if (predicate(pickFrom[key], key)) {
       obj[key] = pickFrom[key];
     }
   }
 
   return obj;
+}
+
+export function removeNilProperties<T extends object>(value: T): Partial<T> {
+  return pickBy(value, (element) => notNil(element));
 }
 
 export async function awaitAllPromises<T>(
@@ -24,11 +29,11 @@ export async function awaitAllPromises<T>(
     rejected: [],
   };
 
-  settled.forEach((item) => {
+  settled.forEach((item, index) => {
     if (item.status === 'fulfilled') {
-      result.fulfilled.push(item.value);
+      result.fulfilled.push({ value: item.value, index });
     } else {
-      result.rejected.push(item.reason);
+      result.rejected.push({ value: item.reason, index });
     }
   });
 

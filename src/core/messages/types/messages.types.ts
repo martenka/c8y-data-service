@@ -10,7 +10,7 @@ export type TaskStatus = keyof typeof TaskSteps;
 
 export interface BaseMessage<T> {
   scheduledAt: string;
-  data: T;
+  content: T;
 }
 
 export interface FileDownloadScheduledMessage {
@@ -18,9 +18,10 @@ export interface FileDownloadScheduledMessage {
   dateFrom: string;
   dateTo: string;
   sensors: {
-    managedObjectId: number;
-    sensorFragmentType: string;
-    filename?: string;
+    id: string;
+    managedObjectId: string;
+    fragmentType: string;
+    fileName?: string;
   }[];
   credentials: {
     username: string;
@@ -33,7 +34,12 @@ export interface FileDownloadScheduledMessage {
 export interface FileDownloadStatusMessage {
   taskId: string;
   status: TaskStatus;
-  filePath?: string;
+  data?: {
+    sensorId: string;
+    filePath?: string;
+    fileName?: string;
+    pathSeparator?: string;
+  }[];
 }
 
 export interface MessagesTypes {

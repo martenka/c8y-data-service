@@ -20,7 +20,17 @@ export class MessagesProducerService {
   ): BaseMessage<T> {
     return {
       scheduledAt: scheduledAt ?? new Date().toISOString(),
-      data,
+      content: data,
     };
+  }
+
+  sendFileDownloadStatusMesssage(
+    message: MessagesTypes['File.DownloadStatus'],
+  ) {
+    this.sendMessage(
+      ExchangeTypes.FILE,
+      'File.DownloadStatus',
+      this.getBaseMessage(message),
+    );
   }
 }
