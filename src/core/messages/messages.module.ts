@@ -8,27 +8,31 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { MessagesHandlerService } from './messages-handler.service';
 import { MessagesController } from './messages-consumer.controller';
+import { RabbitConfig } from '../../config/config';
 
 @Module({
   imports: [
     FilesModule,
-    RabbitMQModule.forRoot(RabbitMQModule, {
-      exchanges: [
-        {
-          name: ExchangeTypes.FILE,
-          type: 'direct',
-          createExchangeIfNotExists: true,
-          options: {
-            durable: true,
+    RabbitMQModule.forRootAsync(RabbitMQModule, {
+      useFactory: (rabbitConfig: RabbitConfig) => ({
+        exchanges: [
+          {
+            name: ExchangeTypes.FILE,
+            type: 'direct',
+            createExchangeIfNotExists: true,
+            options: {
+              durable: true,
+            },
           },
+        ],
+        uri: `amqp://${rabbitConfig.RABBITMQ_DEFAULT_USER}:${rabbitConfig.RABBITMQ_DEFAULT_PASS}@localhost:5672`,
+        prefetchCount: 1,
+        enableControllerDiscovery: true,
+        connectionInitOptions: {
+          wait: true,
         },
-      ],
-      uri: `amqp://${process.env.RABBITMQ_DEFAULT_USER}:${process.env.RABBITMQ_DEFAULT_PASS}@localhost:5672`,
-      prefetchCount: 1,
-      enableControllerDiscovery: true,
-      connectionInitOptions: {
-        wait: true,
-      },
+      }),
+      inject: [RabbitConfig],
     }),
   ],
   controllers: [MessagesController],
