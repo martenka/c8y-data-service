@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { C8yQueryParams } from '../../../utils/paging/types';
+import { C8yQueryParams } from '../../utils/paging/types';
 import { Client, IMeasurement, IResultList } from '@c8y/client';
 import { DownloadService } from './download.service';
 import { isNil } from '@nestjs/common/utils/shared.utils';

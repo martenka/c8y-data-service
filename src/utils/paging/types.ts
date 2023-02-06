@@ -6,7 +6,7 @@ import {
   IResultList,
   Paging,
 } from '@c8y/client';
-import { FileWriter } from '../../core/files/cumulocity/filewriter/types';
+import { FileWriter } from '../../core/cumulocity/filewriter/types';
 
 export type C8yCredentials = ICredentials & { baseURL: string };
 

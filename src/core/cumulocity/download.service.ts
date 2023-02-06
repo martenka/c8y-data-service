@@ -4,7 +4,7 @@ import {
   C8yFetchOptions,
   C8yQueryParams,
   FetchedData,
-} from '../../../utils/paging/types';
+} from '../../utils/paging/types';
 import { Client, IResultList, Paging } from '@c8y/client';
 import { isNil } from '@nestjs/common/utils/shared.utils';
 import { FileWriter } from './filewriter/types';

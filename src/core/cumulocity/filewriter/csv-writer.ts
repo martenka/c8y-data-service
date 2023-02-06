@@ -1,5 +1,5 @@
 import { FileWriter } from './types';
-import { C8yData, FileSaveOptions } from '../../../../utils/paging/types';
+import { C8yData, FileSaveOptions } from '../../../utils/paging/types';
 import { IResultList } from '@c8y/client';
 import { WriteStream } from 'fs';
 import { once } from 'events';

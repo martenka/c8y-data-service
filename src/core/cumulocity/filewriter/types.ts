@@ -1,5 +1,5 @@
 import { IResultList } from '@c8y/client';
-import { C8yData, FetchedData } from '../../../../utils/paging/types';
+import { C8yData, FetchedData } from '../../../utils/paging/types';
 import { WriteStream } from 'fs';
 
 export interface FileWriter<T extends C8yData> {
