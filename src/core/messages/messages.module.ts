@@ -8,15 +8,15 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { MessagesHandlerService } from './messages-handler.service';
 import { MessagesController } from './messages-consumer.controller';
-import { RabbitConfig } from '../../config/config';
 import { CumulocityModule } from '../cumulocity/cumulocity.module';
+import { ConfigService } from '../config/config.service';
 
 @Module({
   imports: [
     FileStorageModule,
     CumulocityModule,
     RabbitMQModule.forRootAsync(RabbitMQModule, {
-      useFactory: (rabbitConfig: RabbitConfig) => ({
+      useFactory: (config: ConfigService) => ({
         exchanges: [
           {
             name: ExchangeTypes.FILE,
@@ -27,14 +27,14 @@ import { CumulocityModule } from '../cumulocity/cumulocity.module';
             },
           },
         ],
-        uri: `amqp://${rabbitConfig.RABBITMQ_DEFAULT_USER}:${rabbitConfig.RABBITMQ_DEFAULT_PASS}@localhost:5672`,
+        uri: `amqp://${config.rabbitConfig.RABBITMQ_DEFAULT_USER}:${config.rabbitConfig.RABBITMQ_DEFAULT_PASS}@localhost:5672`,
         prefetchCount: 1,
         enableControllerDiscovery: true,
         connectionInitOptions: {
           wait: true,
         },
       }),
-      inject: [RabbitConfig],
+      inject: [ConfigService],
     }),
   ],
   controllers: [MessagesController],

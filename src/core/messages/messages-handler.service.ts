@@ -7,8 +7,8 @@ import { CSVWriter } from '../cumulocity/filewriter/csv-writer';
 import { awaitAllPromises, removeNilProperties } from '../../utils/helpers';
 import * as path from 'path';
 import { FileStorageService } from '../file-storage/file-storage.service';
-import { MinioConfig } from '../../config/config';
 import { unlink } from 'fs/promises';
+import { ConfigService } from '../config/config.service';
 
 @Injectable()
 export class MessagesHandlerService {
@@ -18,7 +18,7 @@ export class MessagesHandlerService {
     private readonly filesService: FileStorageService,
     @Inject('TEMP_SENSOR_DATA_FOLDER')
     private readonly sensorFolderPath: string,
-    private readonly miniConfig: MinioConfig,
+    private readonly configService: ConfigService,
   ) {}
 
   async handleFileDownloadScheduledMessage(
@@ -61,7 +61,7 @@ export class MessagesHandlerService {
       (fetchedData) => ({
         sensorId: message.content.sensors[fetchedData.index].id,
         filePath: fetchedData.value.filePath,
-        bucket: this.miniConfig.BUCKET,
+        bucket: this.configService.minioConfig.BUCKET,
         fileName: fetchedData.value.fileName,
         pathSeparator: path.sep,
       }),
@@ -70,7 +70,7 @@ export class MessagesHandlerService {
     for (const file of messageData) {
       const pathToFile = file.filePath + file.pathSeparator + file.fileName;
       await this.filesService.saveFileToBucket(
-        this.miniConfig.BUCKET,
+        this.configService.minioConfig.BUCKET,
         file.fileName,
         pathToFile,
       );
