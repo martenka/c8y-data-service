@@ -4,6 +4,7 @@ import { IResultList } from '@c8y/client';
 import { WriteStream } from 'fs';
 import { once } from 'events';
 import * as fs from 'fs';
+import { unlink } from 'fs/promises';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import { Logger } from '@nestjs/common';
@@ -83,7 +84,7 @@ export class CSVWriter<T extends C8yData> implements FileWriter<T> {
     await this.writeToStream(fileStream, columnRow);
 
     await pipeline(readStream, fileStream);
-    fs.unlinkSync(
+    await unlink(
       path.join(this.folderPath, this.fileDataPrefix + this.fileName),
     );
   }

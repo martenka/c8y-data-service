@@ -36,8 +36,10 @@ export interface FileDownloadStatusMessage {
   status: TaskStatus;
   data?: {
     sensorId: string;
+    bucket: string;
     filePath?: string;
-    fileName?: string;
+    fileURL?: string;
+    fileName: string;
     pathSeparator?: string;
   }[];
 }

@@ -7,18 +7,19 @@ import { CSVWriter } from '../cumulocity/filewriter/csv-writer';
 import { awaitAllPromises, removeNilProperties } from '../../utils/helpers';
 import * as path from 'path';
 import { FileStorageService } from '../file-storage/file-storage.service';
+import { MinioConfig } from '../../config/config';
+import { unlink } from 'fs/promises';
 
 @Injectable()
 export class MessagesHandlerService {
-  private readonly sensorDataFolder: string;
   constructor(
     private readonly measurementDownloadService: MeasurementDownloadService,
     private readonly messagesProducerService: MessagesProducerService,
     private readonly filesService: FileStorageService,
-    @Inject('TEMP_SENSOR_DATA_FOLDER') sensorFolderPath: string,
-  ) {
-    this.sensorDataFolder = sensorFolderPath;
-  }
+    @Inject('TEMP_SENSOR_DATA_FOLDER')
+    private readonly sensorFolderPath: string,
+    private readonly miniConfig: MinioConfig,
+  ) {}
 
   async handleFileDownloadScheduledMessage(
     message: BaseMessage<MessagesTypes['File.DownloadScheduled']>,
@@ -41,7 +42,7 @@ export class MessagesHandlerService {
         this.measurementDownloadService.fetchData(
           client,
           new CSVWriter(
-            this.sensorDataFolder,
+            this.sensorFolderPath,
             removeNilProperties({
               fileName: sensor.fileName,
             }),
@@ -60,17 +61,21 @@ export class MessagesHandlerService {
       (fetchedData) => ({
         sensorId: message.content.sensors[fetchedData.index].id,
         filePath: fetchedData.value.filePath,
+        bucket: this.miniConfig.BUCKET,
         fileName: fetchedData.value.fileName,
         pathSeparator: path.sep,
       }),
     );
 
     for (const file of messageData) {
-      await this.filesService.saveFile(
-        'public',
-        'public/' + file.fileName,
-        file.filePath + file.pathSeparator + file.fileName,
+      const pathToFile = file.filePath + file.pathSeparator + file.fileName;
+      await this.filesService.saveFileToBucket(
+        this.miniConfig.BUCKET,
+        file.fileName,
+        pathToFile,
       );
+
+      await unlink(pathToFile);
     }
 
     this.messagesProducerService.sendFileDownloadStatusMesssage({

@@ -36,6 +36,9 @@ export class MinioConfig {
   @Transform(({ value }) => value.toLowerCase() === 'true')
   @IsBoolean()
   USE_SSL = false;
+
+  @IsString()
+  BUCKET: string;
 }
 
 export class RootConfig {
