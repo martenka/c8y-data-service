@@ -1,3 +1,5 @@
+import { UserMessage } from './message-types/user/types';
+
 export enum TaskSteps {
   NOT_STARTED = 'NOT_STARTED',
   IN_QUEUE = 'IN_QUEUE',
@@ -47,4 +49,5 @@ export interface FileDownloadStatusMessage {
 export interface MessagesTypes {
   'File.DownloadScheduled': FileDownloadScheduledMessage;
   'File.DownloadStatus': FileDownloadStatusMessage;
+  'user.user': UserMessage;
 }

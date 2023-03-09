@@ -1,5 +1,36 @@
 import { notNil } from './validation';
 import { ParsedPromisesResult } from './types';
+import { Types } from 'mongoose';
+import { Buffer } from 'buffer';
+import { ObjectIdLike, BSONError } from 'bson';
+
+type TestType =
+  | string
+  | number
+  | Types.ObjectId
+  | ObjectIdLike
+  | Buffer
+  | Uint8Array;
+
+export function idToObjectID<T extends TestType | TestType[]>(
+  id: T,
+): T extends TestType[] ? Types.ObjectId[] : Types.ObjectId;
+export function idToObjectID(
+  id: TestType | TestType[],
+): Types.ObjectId[] | Types.ObjectId {
+  try {
+    if (Array.isArray(id)) {
+      return id.map((value) => new Types.ObjectId(value));
+    }
+
+    return new Types.ObjectId(id);
+  } catch (e) {
+    if (e instanceof BSONError) {
+      return undefined;
+    }
+    throw e;
+  }
+}
 
 export function pickBy<T extends object>(
   pickFrom: T,

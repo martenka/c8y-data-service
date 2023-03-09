@@ -9,14 +9,16 @@ import * as fs from 'fs';
 import { MessagesHandlerService } from './messages-handler.service';
 import { MessagesController } from './messages-consumer.controller';
 import { CumulocityModule } from '../cumulocity/cumulocity.module';
-import { ConfigService } from '../config/config.service';
+import { ApplicationConfigService } from '../application-config/application-config.service';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
     FileStorageModule,
     CumulocityModule,
+    UsersModule,
     RabbitMQModule.forRootAsync(RabbitMQModule, {
-      useFactory: (config: ConfigService) => ({
+      useFactory: (config: ApplicationConfigService) => ({
         exchanges: [
           {
             name: ExchangeTypes.FILE,
@@ -26,6 +28,11 @@ import { ConfigService } from '../config/config.service';
               durable: true,
             },
           },
+          {
+            name: ExchangeTypes.GENERAL,
+            type: 'topic',
+            createExchangeIfNotExists: true,
+          },
         ],
         uri: `amqp://${config.rabbitConfig.RABBITMQ_DEFAULT_USER}:${config.rabbitConfig.RABBITMQ_DEFAULT_PASS}@localhost:5672`,
         prefetchCount: 1,
@@ -34,7 +41,7 @@ import { ConfigService } from '../config/config.service';
           wait: true,
         },
       }),
-      inject: [ConfigService],
+      inject: [ApplicationConfigService],
     }),
   ],
   controllers: [MessagesController],

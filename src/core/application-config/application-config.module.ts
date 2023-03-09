@@ -1,7 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { dotenvLoader, TypedConfigModule } from 'nest-typed-config';
-import { RootConfig } from './config.definitions';
-import { ConfigService } from './config.service';
+import { RootConfig } from './application-config.definitions';
+import { ApplicationConfigService } from './application-config.service';
 
 @Global()
 @Module({
@@ -14,7 +14,7 @@ import { ConfigService } from './config.service';
       }),
     }),
   ],
-  providers: [ConfigService],
-  exports: [ConfigService],
+  providers: [ApplicationConfigService],
+  exports: [ApplicationConfigService],
 })
-export class ConfigModule {}
+export class ApplicationConfigModule {}

@@ -41,6 +41,20 @@ export class MinioConfig {
   BUCKET: string;
 }
 
+export class MongoConfig {
+  @IsString()
+  USER: string;
+
+  @IsString()
+  PASS: string;
+
+  @IsString()
+  DB: string;
+
+  @IsString()
+  PORT = '27017';
+}
+
 export class RootConfig {
   @Type(() => RabbitConfig)
   @ValidateNested()
@@ -49,4 +63,8 @@ export class RootConfig {
   @Type(() => MinioConfig)
   @ValidateNested()
   MINIO: MinioConfig;
+
+  @Type(() => MongoConfig)
+  @ValidateNested()
+  MONGO: MongoConfig;
 }

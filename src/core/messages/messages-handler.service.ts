@@ -1,24 +1,34 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { BaseMessage, MessagesTypes, TaskSteps } from './types/messages.types';
 import { MeasurementDownloadService } from '../cumulocity/measurement-download.service';
 import { MessagesProducerService } from './messages-producer.service';
 import { BasicAuth, Client, ICredentials } from '@c8y/client';
 import { CSVWriter } from '../cumulocity/filewriter/csv-writer';
-import { awaitAllPromises, removeNilProperties } from '../../utils/helpers';
+import {
+  awaitAllPromises,
+  idToObjectID,
+  removeNilProperties,
+} from '../../utils/helpers';
 import * as path from 'path';
 import { FileStorageService } from '../file-storage/file-storage.service';
 import { unlink } from 'fs/promises';
-import { ConfigService } from '../config/config.service';
+import { ApplicationConfigService } from '../application-config/application-config.service';
+import { isNil } from '@nestjs/common/utils/shared.utils';
+import { notNil } from '../../utils/validation';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class MessagesHandlerService {
+  private readonly logger = new Logger(MessagesHandlerService.name);
+
   constructor(
     private readonly measurementDownloadService: MeasurementDownloadService,
     private readonly messagesProducerService: MessagesProducerService,
     private readonly filesService: FileStorageService,
+    private readonly usersService: UsersService,
     @Inject('TEMP_SENSOR_DATA_FOLDER')
     private readonly sensorFolderPath: string,
-    private readonly configService: ConfigService,
+    private readonly configService: ApplicationConfigService,
   ) {}
 
   async handleFileDownloadScheduledMessage(
@@ -83,5 +93,21 @@ export class MessagesHandlerService {
       status: TaskSteps.DONE,
       data: messageData,
     });
+  }
+
+  async handleUserMessage(message: MessagesTypes['user.user']) {
+    const id = idToObjectID(message.id);
+    if (isNil(id)) {
+      this.logger.warn(
+        `Given user id of ${message.id} is not convertable to ObjectID!`,
+      );
+      return;
+    }
+    if (notNil(message.deletedAt)) {
+      await this.usersService.deleteUser(id);
+      return;
+    }
+
+    await this.usersService.upsertUser({ ...message, id });
   }
 }
