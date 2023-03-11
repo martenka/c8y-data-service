@@ -6,6 +6,7 @@ import {
   RootConfig,
 } from './application-config.definitions';
 import { MongooseModuleOptions } from '@nestjs/mongoose';
+import { AgendaConfig } from 'nestjs-agenda-plus';
 
 @Injectable()
 export class ApplicationConfigService {
@@ -20,6 +21,16 @@ export class ApplicationConfigService {
       uri: `mongodb://${this.mongoEnvironment.USER}:${this.mongoEnvironment.PASS}@localhost:${this.mongoEnvironment.PORT}`,
       dbName: this.mongoEnvironment.DB,
       minPoolSize: 3,
+    };
+  }
+
+  get agendaConfig(): AgendaConfig {
+    return {
+      defaultLockLifetime: 600000, // 10 minutes in ms
+      processEvery: '30s',
+      db: {
+        collection: 'jobs',
+      },
     };
   }
 }

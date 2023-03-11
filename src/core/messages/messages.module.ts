@@ -11,12 +11,14 @@ import { MessagesController } from './messages-consumer.controller';
 import { CumulocityModule } from '../cumulocity/cumulocity.module';
 import { ApplicationConfigService } from '../application-config/application-config.service';
 import { UsersModule } from '../users/users.module';
+import { JobsModule } from '../jobs/jobs.module';
 
 @Module({
   imports: [
     FileStorageModule,
     CumulocityModule,
     UsersModule,
+    JobsModule,
     RabbitMQModule.forRootAsync(RabbitMQModule, {
       useFactory: (config: ApplicationConfigService) => ({
         exchanges: [
