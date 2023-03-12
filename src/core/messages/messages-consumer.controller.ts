@@ -38,7 +38,7 @@ export class MessagesController {
 
   @RabbitSubscribe({
     exchange: ExchangeTypes.GENERAL,
-    queue: 'user',
+    queue: 'dataservice.user',
     routingKey: 'user.#',
     createQueueIfNotExists: true,
     allowNonJsonMessages: true,
@@ -55,6 +55,29 @@ export class MessagesController {
       default:
         this.logger.warn(
           `Got unknown routingKey in consumeUserMessage: ${amqpMsg.fields.routingKey}`,
+        );
+    }
+  }
+
+  @RabbitSubscribe({
+    exchange: ExchangeTypes.GENERAL,
+    queue: 'dataservice.tasks.scheduling',
+    routingKey: 'task.scheduled',
+    createQueueIfNotExists: true,
+    allowNonJsonMessages: true,
+    errorHandler: (channel, msg, error) => {
+      console.error(error);
+    },
+  })
+  async consumeTaskMessage(payload: object, amqpMsg: ConsumeMessage) {
+    switch (amqpMsg.fields.routingKey) {
+      case 'task.scheduled':
+        return await this.messagesHandlerService.handleTaskScheduledMessage(
+          payload as MessagesTypes['task.scheduled'],
+        );
+      default:
+        this.logger.warn(
+          `Got unknown routingKey in consumeTaskMessage: ${amqpMsg.fields.routingKey}`,
         );
     }
   }

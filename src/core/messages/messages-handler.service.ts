@@ -1,5 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { BaseMessage, MessagesTypes, TaskSteps } from './types/messages.types';
+import {
+  BaseMessage,
+  MessagesTypes,
+  TaskSteps,
+  TaskTypes,
+} from './types/messages.types';
 import { MeasurementDownloadService } from '../cumulocity/measurement-download.service';
 import { MessagesProducerService } from './messages-producer.service';
 import { BasicAuth, Client, ICredentials } from '@c8y/client';
@@ -16,6 +21,14 @@ import { ApplicationConfigService } from '../application-config/application-conf
 import { isNil } from '@nestjs/common/utils/shared.utils';
 import { notNil } from '../../utils/validation';
 import { UsersService } from '../users/users.service';
+import { JobsService } from '../jobs/jobs.service';
+
+import {
+  DataFetchTaskMessagePayload,
+  TaskScheduledMessage,
+} from './types/message-types/task/types';
+import { isPeriodicTask } from '../../utils/task';
+import { JobError } from '../jobs/errors/job.error';
 
 @Injectable()
 export class MessagesHandlerService {
@@ -29,6 +42,7 @@ export class MessagesHandlerService {
     @Inject('TEMP_SENSOR_DATA_FOLDER')
     private readonly sensorFolderPath: string,
     private readonly configService: ApplicationConfigService,
+    private readonly jobsService: JobsService,
   ) {}
 
   async handleFileDownloadScheduledMessage(
@@ -109,5 +123,30 @@ export class MessagesHandlerService {
     }
 
     await this.usersService.upsertUser({ ...message, id });
+  }
+
+  async handleTaskScheduledMessage(message: MessagesTypes['task.scheduled']) {
+    const isPeriodic = isPeriodicTask(message);
+    if (!isPeriodic && isNil(message.periodicData.fetchDuration)) {
+      throw new JobError(
+        'Unable to schedule periodic job without fetchDuration set',
+      );
+    }
+
+    switch (message.taskType) {
+      case TaskTypes.DATA_FETCH:
+        await this.jobsService.scheduleDataFetchJob(
+          message as TaskScheduledMessage<DataFetchTaskMessagePayload>,
+          isPeriodic,
+        );
+        break;
+      case TaskTypes.OBJECT_SYNC:
+        await this.jobsService.scheduleObjectSyncJob(message, isPeriodic);
+        break;
+      default:
+        this.logger.warn(
+          `Skipping handling of unknown task of type: ${message?.taskType}`,
+        );
+    }
   }
 }

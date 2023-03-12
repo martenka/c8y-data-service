@@ -4,9 +4,18 @@ import { Types } from 'mongoose';
 import { Filter, Sort } from 'mongodb';
 import { IJobParameters } from '@hokify/agenda/dist/types/JobParameters';
 import { isEmpty } from '@nestjs/common/utils/shared.utils';
-import { ensureArray } from '../../utils/validation';
-import { IBaseJob } from './types/types';
+import { ensureArray, notNil } from '../../utils/validation';
+import {
+  DataFetchJobType,
+  IBaseJob,
+  IJobOptions,
+  ObjectSyncJobType,
+} from './types/types';
 import { JobNotFoundError } from './errors/job-not-found.error';
+import {
+  DataFetchTaskMessagePayload,
+  TaskScheduledMessage,
+} from '../messages/types/message-types/task/types';
 
 @Injectable()
 export class JobsService implements OnModuleDestroy {
@@ -28,28 +37,38 @@ export class JobsService implements OnModuleDestroy {
     );
   }
 
+  /**
+   * Schedules job based on given data. If "firstRunAt" is not given then schedules the job to run immediately. <br>
+   * Setting "skipImmediate" without "firstRunAt" has no effect
+   */
   async schedulePeriodicJob<T extends IBaseJob>(
-    name: string,
+    type: string,
     interval: string | number,
     data?: T,
-    options?: { timezone?: string; skipImmediate?: boolean },
+    options?: IJobOptions,
   ): Promise<Job<T>> {
-    const job = this.agenda.create<T>(name, data);
+    console.log('schedulePeriodicJob');
 
-    job.repeatEvery(interval, options);
-    await job.save();
-    return job;
+    const job = this.agenda.create(type, data);
+
+    if (notNil(options?.firstRunAt)) {
+      job.schedule(options.firstRunAt);
+      options.skipImmediate = true;
+    }
+
+    return (await job.repeatEvery(interval, options).save()) as Job<T>;
   }
 
   async scheduleSingleJob<T extends IBaseJob>(
-    name: string,
+    type: string,
     runAt: string | Date,
     data?: T,
   ): Promise<Job<T>> {
-    const job = this.agenda.create<T>(name, data);
-    job.schedule(runAt);
-    await job.save();
-    return job;
+    console.log('scheduleSingleJob');
+    return (await this.agenda
+      .create<T>(type, data)
+      .schedule(runAt)
+      .save()) as Job<T>;
   }
 
   /**
@@ -67,6 +86,43 @@ export class JobsService implements OnModuleDestroy {
     return job.run();
   }
 
+  async scheduleDataFetchJob(
+    jobInput: TaskScheduledMessage<DataFetchTaskMessagePayload>,
+    isPeriodic = false,
+  ): Promise<Job<DataFetchJobType>> {
+    console.log('scheduleDataFetchJob');
+    console.dir(jobInput, { depth: 7 });
+    const jobData: DataFetchJobType = {
+      label: jobInput.taskName,
+      remoteTaskId: jobInput.taskId,
+      payload: {
+        dateFrom: jobInput.payload.dateFrom,
+        dateTo: jobInput.payload.dateTo,
+        data: ensureArray(jobInput.payload.data),
+      },
+    };
+    if (isPeriodic) {
+      jobData.payload.periodicData = {
+        fetchDuration: jobInput.periodicData.fetchDuration,
+      };
+    }
+
+    return await this.scheduleJob(jobInput, jobData, isPeriodic);
+  }
+
+  async scheduleObjectSyncJob(
+    jobInput: TaskScheduledMessage,
+    isPeriodic = false,
+  ): Promise<Job<ObjectSyncJobType>> {
+    const jobData: ObjectSyncJobType = {
+      remoteTaskId: jobInput.taskId,
+      label: jobInput.taskName,
+      payload: {},
+    };
+
+    return await this.scheduleJob(jobInput, jobData, isPeriodic);
+  }
+
   /**
    * Removes job in OR fashion
    */
@@ -82,7 +138,34 @@ export class JobsService implements OnModuleDestroy {
     } as Filter<IJobParameters>);
   }
 
+  private async scheduleJob<T extends TaskScheduledMessage, P extends IBaseJob>(
+    jobInput: T,
+    jobData: P,
+    isPeriodic = false,
+    inputOptions?: IJobOptions,
+  ): Promise<Job<P>> {
+    if (isPeriodic) {
+      const options: IJobOptions = {
+        firstRunAt: jobInput.firstRunAt,
+        ...inputOptions,
+      };
+      return this.schedulePeriodicJob<P>(
+        jobInput.taskType,
+        jobInput.periodicData.pattern,
+        jobData,
+        options,
+      );
+    }
+
+    return await this.scheduleSingleJob(
+      jobInput.taskType,
+      jobInput.firstRunAt ?? new Date(),
+      jobData,
+    );
+  }
+
   async onModuleDestroy(): Promise<void> {
+    this.logger.log('Stopping jobs service');
     await this.agenda.stop();
   }
 }

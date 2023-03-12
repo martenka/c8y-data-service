@@ -27,7 +27,6 @@ export class ApplicationConfigService {
   get agendaConfig(): AgendaConfig {
     return {
       defaultLockLifetime: 600000, // 10 minutes in ms
-      processEvery: '30s',
       db: {
         collection: 'jobs',
       },

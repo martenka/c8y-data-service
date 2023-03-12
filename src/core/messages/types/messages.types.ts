@@ -1,4 +1,5 @@
 import { UserMessage } from './message-types/user/types';
+import { TaskScheduledMessage } from './message-types/task/types';
 
 export enum TaskSteps {
   NOT_STARTED = 'NOT_STARTED',
@@ -6,6 +7,11 @@ export enum TaskSteps {
   PROCESSING = 'PROCESSING',
   DONE = 'DONE',
   FAILED = 'FAILED',
+}
+
+export enum TaskTypes {
+  DATA_FETCH = 'DATA_FETCH',
+  OBJECT_SYNC = 'OBJECT_SYNC',
 }
 
 export type TaskStatus = keyof typeof TaskSteps;
@@ -46,8 +52,16 @@ export interface FileDownloadStatusMessage {
   }[];
 }
 
+export interface TaskStatusMessage<P extends object = object> {
+  taskId: string;
+  taskType: keyof typeof TaskTypes;
+  status: TaskStatus;
+  payload: P;
+}
+
 export interface MessagesTypes {
   'File.DownloadScheduled': FileDownloadScheduledMessage;
   'File.DownloadStatus': FileDownloadStatusMessage;
+  'task.scheduled': TaskScheduledMessage;
   'user.user': UserMessage;
 }
