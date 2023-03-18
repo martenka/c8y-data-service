@@ -56,7 +56,15 @@ export class JobsService implements OnModuleDestroy {
       options.skipImmediate = true;
     }
 
-    return (await job.repeatEvery(interval, options).save()) as Job<T>;
+    const numericInterval = Number(interval);
+
+    // Agenda expects milliseconds
+    return (await job
+      .repeatEvery(
+        !isNaN(numericInterval) ? numericInterval * 1000 : interval,
+        options,
+      )
+      .save()) as Job<T>;
   }
 
   async scheduleSingleJob<T extends IBaseJob>(
@@ -90,11 +98,10 @@ export class JobsService implements OnModuleDestroy {
     jobInput: TaskScheduledMessage<DataFetchTaskMessagePayload>,
     isPeriodic = false,
   ): Promise<Job<DataFetchJobType>> {
-    console.log('scheduleDataFetchJob');
-    console.dir(jobInput, { depth: 7 });
     const jobData: DataFetchJobType = {
       label: jobInput.taskName,
       remoteTaskId: jobInput.taskId,
+      initiatedByUser: jobInput.initiatedByUser,
       payload: {
         dateFrom: jobInput.payload.dateFrom,
         dateTo: jobInput.payload.dateTo,
@@ -103,7 +110,7 @@ export class JobsService implements OnModuleDestroy {
     };
     if (isPeriodic) {
       jobData.payload.periodicData = {
-        fetchDuration: jobInput.periodicData.fetchDuration,
+        fetchDurationSeconds: jobInput.periodicData.fetchDurationSeconds,
       };
     }
 
@@ -115,6 +122,7 @@ export class JobsService implements OnModuleDestroy {
     isPeriodic = false,
   ): Promise<Job<ObjectSyncJobType>> {
     const jobData: ObjectSyncJobType = {
+      initiatedByUser: jobInput.initiatedByUser,
       remoteTaskId: jobInput.taskId,
       label: jobInput.taskName,
       payload: {},

@@ -23,10 +23,15 @@ export interface TaskScheduledMessage<P extends object = object> {
   taskId: string;
   taskType: string;
   taskName: string;
+  initiatedByUser: string;
   firstRunAt?: string;
   periodicData?: {
     pattern: string;
-    fetchDuration: number;
+    fetchDurationSeconds: number;
   };
   payload: P;
+}
+
+export interface TaskFailedMessagePayload {
+  reason: string;
 }

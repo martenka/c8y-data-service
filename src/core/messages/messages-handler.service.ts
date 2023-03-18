@@ -27,7 +27,7 @@ import {
   DataFetchTaskMessagePayload,
   TaskScheduledMessage,
 } from './types/message-types/task/types';
-import { isPeriodicTask } from '../../utils/task';
+import { isPeriodicWork } from '../../utils/task';
 import { JobError } from '../jobs/errors/job.error';
 
 @Injectable()
@@ -126,8 +126,8 @@ export class MessagesHandlerService {
   }
 
   async handleTaskScheduledMessage(message: MessagesTypes['task.scheduled']) {
-    const isPeriodic = isPeriodicTask(message);
-    if (!isPeriodic && isNil(message.periodicData.fetchDuration)) {
+    const isPeriodic = isPeriodicWork(message);
+    if (isPeriodic && isNil(message.periodicData.fetchDurationSeconds)) {
       throw new JobError(
         'Unable to schedule periodic job without fetchDuration set',
       );

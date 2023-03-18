@@ -16,7 +16,7 @@ export interface C8yMeasurementQuery {
   dateTo?: string;
   pageSize?: number;
   revert?: boolean;
-  source?: string;
+  source?: string | number;
   type?: string;
   valueFragmentSeries?: string;
   valueFragmentType?: string;

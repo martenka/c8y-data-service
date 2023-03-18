@@ -1,10 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { User, UserDocument, UserModel } from '../../models/User';
+import {
+  C8yCredentialsType,
+  User,
+  UserDocument,
+  UserModel,
+} from '../../models/User';
 import { UserMessage } from '../messages/types/message-types/user/types';
 import { Types } from 'mongoose';
 import { UserService } from '@c8y/client';
 import { notNil } from '../../utils/validation';
+import { isNil } from '@nestjs/common/utils/shared.utils';
 
 @Injectable()
 export class UsersService {
@@ -37,5 +43,18 @@ export class UsersService {
       this.logger.log(`Deleted user with id: ${deletedUserId}`);
     }
     return result;
+  }
+
+  async getUserCredentials(
+    id: Types.ObjectId,
+  ): Promise<C8yCredentialsType | undefined> {
+    const user = await this.userModel
+      .findById(id, { c8yCredentials: 1 })
+      .lean(true)
+      .exec();
+    if (isNil(user)) {
+      throw new Error(`User with id ${id?.toString()} not found!`);
+    }
+    return user?.c8yCredentials;
   }
 }

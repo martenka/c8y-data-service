@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { MessagesProducerService } from './messages-producer.service';
 import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
 import { ExchangeTypes } from './types/exchanges';
@@ -18,7 +18,7 @@ import { JobsModule } from '../jobs/jobs.module';
     FileStorageModule,
     CumulocityModule,
     UsersModule,
-    JobsModule,
+    forwardRef(() => JobsModule),
     RabbitMQModule.forRootAsync(RabbitMQModule, {
       useFactory: (config: ApplicationConfigService) => ({
         exchanges: [
