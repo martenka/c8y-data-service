@@ -20,7 +20,7 @@ export interface IDataFetchJobPayload extends DataFetchTaskMessagePayload {
 }
 
 export interface DataFetchJobResult {
-  sensorId: number;
+  sensorId: string;
   filePath: string;
   bucket: string;
   fileName: string;

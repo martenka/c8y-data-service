@@ -4,6 +4,7 @@ export interface DataFetchTaskMessagePayload {
   data: {
     fileName?: string;
     sensor: {
+      id: string;
       managedObjectId: number;
       fragmentType?: string;
       fragmentSeries?: string;
@@ -11,12 +12,14 @@ export interface DataFetchTaskMessagePayload {
   }[];
 }
 
-export interface DataFetchTaskMessageStatusPayload {
-  sensorId: string;
-  bucket: string;
-  filePath?: string;
-  fileURL?: string;
-  fileName: string;
+export interface DataFetchTaskResultStatusPayload {
+  sensors: {
+    sensorId: string;
+    bucket: string;
+    filePath?: string;
+    fileURL?: string;
+    fileName: string;
+  }[];
 }
 
 export interface TaskScheduledMessage<P extends object = object> {

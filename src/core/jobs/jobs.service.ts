@@ -47,8 +47,6 @@ export class JobsService implements OnModuleDestroy {
     data?: T,
     options?: IJobOptions,
   ): Promise<Job<T>> {
-    console.log('schedulePeriodicJob');
-
     const job = this.agenda.create(type, data);
 
     if (notNil(options?.firstRunAt)) {
@@ -72,7 +70,6 @@ export class JobsService implements OnModuleDestroy {
     runAt: string | Date,
     data?: T,
   ): Promise<Job<T>> {
-    console.log('scheduleSingleJob');
     return (await this.agenda
       .create<T>(type, data)
       .schedule(runAt)

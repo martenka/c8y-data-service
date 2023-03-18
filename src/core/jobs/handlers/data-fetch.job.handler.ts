@@ -117,8 +117,7 @@ export class DataFetchJobHandler {
 
     const messageData = fetchedDataForAllSensors.fulfilled.map(
       (fetchedData) => ({
-        sensorId:
-          job.attrs.data.payload.data[fetchedData.index].sensor.managedObjectId,
+        sensorId: job.attrs.data.payload.data[fetchedData.index].sensor.id,
         filePath: fetchedData.value.filePath,
         bucket: this.configService.minioConfig.BUCKET,
         fileName: fetchedData.value.fileName,

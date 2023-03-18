@@ -57,7 +57,7 @@ export interface FileDownloadStatusMessage {
 
 export interface TaskStatusMessage<P extends object = object> {
   taskId: string;
-  taskType: keyof typeof TaskTypes;
+  taskType: string;
   status: TaskStatus;
   payload: P;
 }

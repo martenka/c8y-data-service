@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
-import { BaseMessage, MessagesTypes } from './types/messages.types';
+import {
+  BaseMessage,
+  MessagesTypes,
+  TaskStatusMessage,
+} from './types/messages.types';
 import { ExchangeTypes } from './types/exchanges';
 import { Options } from 'amqplib';
 
@@ -28,5 +32,13 @@ export class MessagesProducerService {
     message: MessagesTypes['File.DownloadStatus'],
   ) {
     this.sendMessage(ExchangeTypes.FILE, 'File.DownloadStatus', message);
+  }
+
+  sendTaskStatusMessage<T extends object>(message: TaskStatusMessage<T>) {
+    this.sendMessage(ExchangeTypes.GENERAL, 'task.status', message);
+  }
+
+  sendTaskFailedMessage(message: MessagesTypes['task.status.failed']) {
+    this.sendMessage(ExchangeTypes.GENERAL, 'task.status.failed', message);
   }
 }
