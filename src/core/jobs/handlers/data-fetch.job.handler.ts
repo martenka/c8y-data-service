@@ -93,6 +93,10 @@ export class DataFetchJobHandler {
 
     const client = new Client(new BasicAuth(auth), credentials.baseAddress);
 
+    if (isNil(dateFrom) || isNil(dateTo)) {
+      throw new Error('Starting and ending date must be defined!');
+    }
+
     const fetchedDataForAllSensors = await awaitAllPromises(
       job.attrs.data.payload.data.map((object) =>
         this.measurementDownloadService.fetchData(
