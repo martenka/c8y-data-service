@@ -23,14 +23,6 @@ import { JobsModule } from '../jobs/jobs.module';
       useFactory: (config: ApplicationConfigService) => ({
         exchanges: [
           {
-            name: ExchangeTypes.FILE,
-            type: 'direct',
-            createExchangeIfNotExists: true,
-            options: {
-              durable: true,
-            },
-          },
-          {
             name: ExchangeTypes.GENERAL,
             type: 'topic',
             createExchangeIfNotExists: true,

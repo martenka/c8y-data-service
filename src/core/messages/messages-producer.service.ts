@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
-import {
-  BaseMessage,
-  MessagesTypes,
-  TaskStatusMessage,
-} from './types/messages.types';
+import { MessagesTypes, TaskStatusMessage } from './types/messages.types';
 import { ExchangeTypes } from './types/exchanges';
 import { Options } from 'amqplib';
 
@@ -14,7 +10,7 @@ export class MessagesProducerService {
 
   private sendMessage<
     K extends keyof MessagesTypes,
-    V extends MessagesTypes[K] | BaseMessage<MessagesTypes[K]>,
+    V extends MessagesTypes[K],
   >(
     exchange: ExchangeTypes,
     routingKey: K,
@@ -26,12 +22,6 @@ export class MessagesProducerService {
       ...options,
     };
     this.amqpConnection.publish(exchange, routingKey, message, amqpOptions);
-  }
-
-  sendFileDownloadStatusMesssage(
-    message: MessagesTypes['File.DownloadStatus'],
-  ) {
-    this.sendMessage(ExchangeTypes.FILE, 'File.DownloadStatus', message);
   }
 
   sendTaskStatusMessage<T extends object>(message: TaskStatusMessage<T>) {

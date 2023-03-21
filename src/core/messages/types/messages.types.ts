@@ -19,11 +19,6 @@ export enum TaskTypes {
 
 export type TaskStatus = keyof typeof TaskSteps;
 
-export interface BaseMessage<T> {
-  scheduledAt: string;
-  content: T;
-}
-
 export interface FileDownloadScheduledMessage {
   taskId: string;
   dateFrom: string;

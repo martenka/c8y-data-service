@@ -7,15 +7,14 @@ import * as fs from 'fs';
 import { unlink } from 'fs/promises';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
-import { Logger } from '@nestjs/common';
 import { pipeline } from 'stream/promises';
 
 export class CSVWriter<T extends C8yData> implements FileWriter<T> {
   private fileDataPrefix = 'nocolumns_';
   private stream: WriteStream;
-  private folderPath: string;
+  private localFolderPath: string;
   private fileName: string;
-  private absolutePath: string;
+  private localAbsolutePath: string;
   private columns: Set<string>;
   private data: Record<string, string>;
   private delimiter: string;
@@ -23,14 +22,14 @@ export class CSVWriter<T extends C8yData> implements FileWriter<T> {
   constructor(folderPath: string, options?: FileSaveOptions, delimiter = ',') {
     this.columns = new Set();
     this.data = {};
-    this.folderPath = folderPath;
+    this.localFolderPath = folderPath;
     this.delimiter = delimiter;
     this.fileName =
       (options?.fileName && options.fileName + '.csv') ??
       `csvfile_${randomUUID()}.csv`;
-    this.absolutePath = path.join(this.folderPath, this.fileName);
+    this.localAbsolutePath = path.join(this.localFolderPath, this.fileName);
     this.stream = fs.createWriteStream(
-      path.join(this.folderPath, this.fileDataPrefix + this.fileName),
+      path.join(this.localFolderPath, this.fileDataPrefix + this.fileName),
       {
         flags: 'w+',
         autoClose: true,
@@ -53,27 +52,18 @@ export class CSVWriter<T extends C8yData> implements FileWriter<T> {
    * while also writing the column names
    */
   async close(): Promise<void> {
-    const columnArray = Array.from(this.columns);
     this.stream.close();
     await once(this.stream, 'close');
-
-    if (columnArray.length === 0) {
-      Logger.log(
-        'No columns after fetching data. Not writing to file!',
-        'CSVWriter',
-      );
-      return Promise.resolve();
-    }
 
     const columnRow = Array.from(this.columns).join(this.delimiter) + '\n';
 
     const readStream = fs.createReadStream(
-      path.join(this.folderPath, this.fileDataPrefix + this.fileName),
+      path.join(this.localFolderPath, this.fileDataPrefix + this.fileName),
       { encoding: 'utf-8', autoClose: true },
     );
 
     const fileStream = fs.createWriteStream(
-      path.join(this.folderPath, this.fileName),
+      path.join(this.localFolderPath, this.fileName),
       {
         flags: 'w+',
         autoClose: true,
@@ -85,7 +75,7 @@ export class CSVWriter<T extends C8yData> implements FileWriter<T> {
 
     await pipeline(readStream, fileStream);
     await unlink(
-      path.join(this.folderPath, this.fileDataPrefix + this.fileName),
+      path.join(this.localFolderPath, this.fileDataPrefix + this.fileName),
     );
   }
 
@@ -94,7 +84,7 @@ export class CSVWriter<T extends C8yData> implements FileWriter<T> {
   }
 
   getFileInfo() {
-    return { fileName: this.fileName, filePath: this.folderPath };
+    return { fileName: this.fileName, localFilePath: this.localFolderPath };
   }
 
   private extractRowData(data: T, keyPath: string): void {

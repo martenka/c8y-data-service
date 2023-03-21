@@ -19,6 +19,7 @@ import { DateTime, Interval } from 'luxon';
 import { parseExpression } from 'cron-parser';
 import humanInterval from 'human-interval';
 import { isValidHumanInterval } from '@hokify/agenda/dist/utils/nextRunAt';
+import { GenericFileStorageInfoService } from '../../file-storage/file-storage-info.service';
 
 @Injectable()
 export class DataFetchJobHandler {
@@ -26,6 +27,7 @@ export class DataFetchJobHandler {
     private readonly configService: ApplicationConfigService,
     private readonly messageProducerService: MessagesProducerService,
     private readonly measurementDownloadService: MeasurementDownloadService,
+    private readonly fileStorageInfoService: GenericFileStorageInfoService,
     private readonly filesService: FileStorageService,
     private readonly usersService: UsersService,
     @InjectLocalDataDownloadFolder()
@@ -119,25 +121,26 @@ export class DataFetchJobHandler {
       ),
     );
 
-    const messageData = fetchedDataForAllSensors.fulfilled.map(
-      (fetchedData) => ({
-        sensorId: job.attrs.data.payload.data[fetchedData.index].sensor.id,
-        filePath: fetchedData.value.filePath,
-        bucket: this.configService.minioConfig.BUCKET,
-        fileName: fetchedData.value.fileName,
-        pathSeparator: path.sep,
-      }),
-    );
+    const jobResultData: DataFetchJobResult[] = [];
 
-    for (const file of messageData) {
-      const pathToFile = file.filePath + file.pathSeparator + file.fileName;
-      await this.filesService.saveFileToBucket(
-        this.configService.minioConfig.BUCKET,
-        file.fileName,
-        pathToFile,
-      );
+    for (const fetchedData of fetchedDataForAllSensors.fulfilled) {
+      const pathToFile =
+        fetchedData.value.localFilePath + path.sep + fetchedData.value.fileName;
+      const savedFile = await this.filesService.saveFileToBucket({
+        fileInfoGenerator: this.fileStorageInfoService,
+        bucketName: this.configService.minioEnvironment.BUCKET,
+        filePath: pathToFile,
+        objectName: fetchedData.value.fileName,
+      });
 
       await unlink(pathToFile);
+
+      jobResultData.push({
+        sensorId: job.attrs.data.payload.data[fetchedData.index].sensor.id,
+        filePath: savedFile.path,
+        bucket: this.configService.minioEnvironment.BUCKET,
+        fileName: savedFile.fileName,
+      });
     }
 
     if (shouldSaveDateTimes) {
@@ -149,7 +152,8 @@ export class DataFetchJobHandler {
       job.attrs.data.payload.periodicData.fetchDurationSeconds =
         fetchDurationSeconds;
     }
-    return messageData;
+    await job.save();
+    return jobResultData;
   }
 
   /**

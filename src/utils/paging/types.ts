@@ -45,7 +45,7 @@ export type C8yQueryParams<T> = T extends IMeasurement
   : object;
 
 export interface FetchedData<V> {
-  filePath: string;
+  localFilePath: string;
   fileName: string;
   data: V[] | undefined;
 }

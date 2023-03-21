@@ -7,13 +7,14 @@ import {
 } from './application-config.definitions';
 import { MongooseModuleOptions } from '@nestjs/mongoose';
 import { AgendaConfig } from 'nestjs-agenda-plus';
+import { IMinioConfig } from './types/types';
 
 @Injectable()
 export class ApplicationConfigService {
   constructor(
     readonly mainConfig: RootConfig,
     readonly rabbitConfig: RabbitConfig,
-    readonly minioConfig: MinioConfig,
+    readonly minioEnvironment: MinioConfig,
     readonly mongoEnvironment: MongoConfig,
   ) {}
   get mongooseModuleOptions(): MongooseModuleOptions {
@@ -30,6 +31,13 @@ export class ApplicationConfigService {
       db: {
         collection: 'jobs',
       },
+    };
+  }
+
+  get minioConfig(): IMinioConfig {
+    return {
+      bucket: this.minioEnvironment.BUCKET,
+      dataFolder: 'data',
     };
   }
 }
