@@ -1,6 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { MessagesTypes, TaskTypes } from './types/messages.types';
-import { MeasurementDownloadService } from '../cumulocity/measurement-download.service';
 import { MessagesProducerService } from './messages-producer.service';
 
 import { idToObjectID } from '../../utils/helpers';
@@ -25,7 +24,6 @@ export class MessagesHandlerService {
   private readonly logger = new Logger(MessagesHandlerService.name);
 
   constructor(
-    private readonly measurementDownloadService: MeasurementDownloadService,
     private readonly messagesProducerService: MessagesProducerService,
     private readonly filesService: FileStorageService,
     private readonly usersService: UsersService,

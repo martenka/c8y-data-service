@@ -24,9 +24,10 @@ export abstract class DownloadService<T extends C8yData, V = unknown>
 
   async fetchData(
     client: Client,
-    fileWriter: FileWriter<T>,
     query: C8yQueryParams<T>,
     options?: C8yFetchOptions,
+    fileWriter?: FileWriter<T>,
+    pageResultHandler?: (page: V[]) => Promise<void>,
   ): Promise<FetchedData<V>> {
     const savedData: V[] = [];
 
@@ -43,9 +44,10 @@ export abstract class DownloadService<T extends C8yData, V = unknown>
         { ...query, withTotalPages: true },
         currentPage,
       );
-      await fileWriter.write(currentPage);
+      await fileWriter?.write(currentPage);
 
-      const handledPage = this.pageHandler(currentPage);
+      const handledPage = await this.pageHandler(client, currentPage);
+      await pageResultHandler?.(handledPage);
       if (options?.returnData) {
         savedData.push(...handledPage);
       }
@@ -53,12 +55,12 @@ export abstract class DownloadService<T extends C8yData, V = unknown>
       pageCounter++;
     }
 
-    await fileWriter.close();
+    await fileWriter?.close();
     return {
-      ...fileWriter.getFileInfo(),
+      ...(fileWriter?.getFileInfo() ?? { fileName: '', localFilePath: '' }),
       data: options?.returnData ? savedData : undefined,
     };
   }
 
-  abstract pageHandler(page: IResultList<T>): V[];
+  abstract pageHandler(client: Client, page: IResultList<T>): Promise<V[]>;
 }

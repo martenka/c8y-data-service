@@ -2,10 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DefineJob } from 'nestjs-agenda-plus';
 import { Job } from '@hokify/agenda';
 import { TaskSteps, TaskTypes } from '../../messages/types/messages.types';
-import { DataFetchJobType, IBaseJob } from '../types/types';
+import { DataFetchJobType, IBaseJob, ObjectSyncJobType } from '../types/types';
 import { MessagesProducerService } from '../../messages/messages-producer.service';
 import { DataFetchJobHandler } from '../handlers/data-fetch.job.handler';
-import { DataFetchTaskResultStatusPayload } from '../../messages/types/message-types/task/types';
+import {
+  DataFetchTaskResultStatusPayload,
+  ObjectSyncTaskResultPayload,
+} from '../../messages/types/message-types/task/types';
+import { ObjectSyncJobHandler } from '../handlers/object-sync.job.handler';
 
 @Injectable()
 export class JobsRunner {
@@ -14,6 +18,7 @@ export class JobsRunner {
   constructor(
     private readonly messageProducerService: MessagesProducerService,
     private readonly dataFetchJobHandler: DataFetchJobHandler,
+    private readonly objectSyncJobHandler: ObjectSyncJobHandler,
   ) {}
 
   @DefineJob(TaskTypes.DATA_FETCH)
@@ -32,15 +37,29 @@ export class JobsRunner {
       taskType: job.attrs.name,
       payload: messagePayload,
     });
-    this.logger.log(`Job ${job.attrs._id?.toString()} finished`);
+    this.logger.log(
+      `Job ${job.attrs.name} ${job.attrs._id?.toString()} finished`,
+    );
   }
 
   @DefineJob(TaskTypes.OBJECT_SYNC)
-  async runObjectSyncJob(job: Job) {
-    console.log(
-      'Running objectsync job',
-      job.attrs._id.toString(),
-      new Date().toISOString(),
+  async runObjectSyncJob(job: Job<ObjectSyncJobType>) {
+    const result = await this.withJobStatusHandler(job, () =>
+      this.objectSyncJobHandler.handle(job),
+    );
+    this.messageProducerService.sendTaskStatusMessage<ObjectSyncTaskResultPayload>(
+      {
+        taskId: job.attrs.data.remoteTaskId,
+        status: TaskSteps.DONE,
+        taskType: job.attrs.name,
+        payload: { objectAmount: result },
+      },
+    );
+
+    this.logger.log(
+      `Job ${
+        job.attrs.name
+      } ${job.attrs._id?.toString()} finished with ${result} synced objects`,
     );
   }
 

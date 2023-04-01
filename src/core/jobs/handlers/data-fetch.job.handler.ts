@@ -100,15 +100,15 @@ export class DataFetchJobHandler {
     }
 
     const fetchedDataForAllSensors = await awaitAllPromises(
-      job.attrs.data.payload.data.map((object) =>
-        this.measurementDownloadService.fetchData(
+      job.attrs.data.payload.data.map((object) => {
+        const fileWriter = new CSVWriter(
+          this.localDownloadsFolderPath,
+          removeNilProperties({
+            fileName: object.fileName,
+          }),
+        );
+        return this.measurementDownloadService.fetchData(
           client,
-          new CSVWriter(
-            this.localDownloadsFolderPath,
-            removeNilProperties({
-              fileName: object.fileName,
-            }),
-          ),
           removeNilProperties({
             dateFrom,
             dateTo,
@@ -117,8 +117,10 @@ export class DataFetchJobHandler {
             valueFragmentType: object.sensor.fragmentType,
             valueFragmentSeries: object.sensor.fragmentSeries,
           }),
-        ),
-      ),
+          {},
+          fileWriter,
+        );
+      }),
     );
 
     const jobResultData: DataFetchJobResult[] = [];

@@ -18,7 +18,10 @@ export class MeasurementDownloadService extends DownloadService<IMeasurement> {
     return await lastPage.paging.next();
   }
 
-  pageHandler(page: IResultList<IMeasurement>): object[] {
+  async pageHandler(
+    client: Client,
+    page: IResultList<IMeasurement>,
+  ): Promise<object[]> {
     return page.data;
   }
 }

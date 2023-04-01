@@ -1,3 +1,10 @@
+import { CustomAttributes } from '../../../../../models/types/types';
+
+export enum ObjectTypes {
+  SENSOR = 'SENSOR',
+  GROUP = 'GROUP',
+}
+
 export interface DataFetchTaskMessagePayload {
   dateFrom?: string;
   dateTo?: string;
@@ -20,6 +27,32 @@ export interface DataFetchTaskResultStatusPayload {
     fileURL?: string;
     fileName: string;
   }[];
+}
+
+export interface ManagedObject {
+  managedObjectId: string;
+  managedObjectName: string;
+  objectType: keyof typeof ObjectTypes;
+  type?: string;
+  owner?: string;
+  additionalFragments?: CustomAttributes;
+}
+
+export interface Sensor extends ManagedObject {
+  valueFragmentType?: string;
+}
+
+export interface Group extends ManagedObject {
+  description?: string;
+  objects: ManagedObject[];
+}
+
+export interface ObjectSyncTaskStatusPayload {
+  objects: (Sensor | Group)[];
+}
+
+export interface ObjectSyncTaskResultPayload {
+  objectAmount: number;
 }
 
 export interface TaskScheduledMessage<P extends object = object> {

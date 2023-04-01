@@ -13,6 +13,7 @@ import { MessagesModule } from '../messages/messages.module';
 import { CumulocityModule } from '../cumulocity/cumulocity.module';
 import { FileStorageModule } from '../file-storage/file-storage.module';
 import { UsersModule } from '../users/users.module';
+import { ObjectSyncJobHandler } from './handlers/object-sync.job.handler';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { UsersModule } from '../users/users.module';
       },
     },
     DataFetchJobHandler,
+    ObjectSyncJobHandler,
     JobsRunner,
     JobsService,
   ],

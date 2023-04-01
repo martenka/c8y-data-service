@@ -10,17 +10,21 @@ import { FileWriter } from '../../core/cumulocity/filewriter/types';
 
 export type C8yCredentials = ICredentials & { baseURL: string };
 
-export interface C8yMeasurementQuery {
+export interface C8yPagingQuery {
+  pageSize?: number;
   currentPage?: number;
+  withTotalElements?: boolean;
+  withTotalPages?: boolean;
+}
+
+export interface C8yMeasurementQuery extends C8yPagingQuery {
   dateFrom?: string;
   dateTo?: string;
-  pageSize?: number;
   revert?: boolean;
   source?: string | number;
   type?: string;
   valueFragmentSeries?: string;
   valueFragmentType?: string;
-  withTotalElements?: boolean;
 }
 
 export type C8yQuery = C8yMeasurementQuery;
@@ -42,6 +46,8 @@ export interface FileSaveOptions {
 }
 export type C8yQueryParams<T> = T extends IMeasurement
   ? C8yMeasurementQuery
+  : T extends IManagedObject
+  ? C8yPagingQuery
   : object;
 
 export interface FetchedData<V> {
@@ -61,17 +67,13 @@ export interface C8yFetcher<T extends C8yData, V> {
     query: C8yQueryParams<T>,
     lastPage: IResultList<T> | undefined,
   ) => Promise<IResultList<T>>;
-  pageHandler: (page: IResultList<T>) => V[];
+  pageHandler: (client: Client, page: IResultList<T>) => Promise<V[]>;
   hasNextPage: (pageInfo: Paging<T>) => boolean;
   fetchData: (
     client: Client,
-    fileWriter: FileWriter<T>,
     query: C8yQueryParams<T>,
     fetchOptions?: C8yFetchOptions,
+    fileWriter?: FileWriter<T>,
+    pageResultHandler?: (page: V[]) => Promise<void>,
   ) => Promise<FetchedData<V>>;
-}
-
-export async function foo() {
-  const client = await Client.authenticate({});
-  client.measurement.list();
 }
