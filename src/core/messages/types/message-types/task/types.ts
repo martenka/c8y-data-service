@@ -29,7 +29,7 @@ export interface DataFetchTaskResultStatusPayload {
   }[];
 }
 
-export interface ManagedObject {
+export interface BaseManagedObject {
   managedObjectId: string;
   managedObjectName: string;
   objectType: keyof typeof ObjectTypes;
@@ -38,13 +38,13 @@ export interface ManagedObject {
   additionalFragments?: CustomAttributes;
 }
 
-export interface Sensor extends ManagedObject {
+export interface Sensor extends BaseManagedObject {
   valueFragmentType?: string;
 }
 
-export interface Group extends ManagedObject {
+export interface Group extends BaseManagedObject {
   description?: string;
-  objects: ManagedObject[];
+  objects: BaseManagedObject[];
 }
 
 export interface ObjectSyncTaskStatusPayload {

@@ -7,6 +7,7 @@ import { Types } from 'mongoose';
 import { BasicAuth, Client, ICredentials, IManagedObject } from '@c8y/client';
 import {
   Group,
+  BaseManagedObject,
   ObjectSyncTaskStatusPayload,
   ObjectTypes,
   Sensor,
@@ -14,6 +15,7 @@ import {
 import { isNil } from '@nestjs/common/utils/shared.utils';
 import { MessagesProducerService } from '../../messages/messages-producer.service';
 import { TaskSteps, TaskTypes } from '../../messages/types/messages.types';
+import { isGroup } from '../../messages/guards/guards';
 
 @Injectable()
 export class ObjectSyncJobHandler {
@@ -58,16 +60,12 @@ export class ObjectSyncJobHandler {
     page: IManagedObject[],
     taskRemoteId: string,
   ): Promise<number> {
-    const objects: (Sensor | Group)[] = [];
+    const objects: BaseManagedObject[] = [];
     for (const item of page) {
-      if ('c8y_IsDeviceGroup' in Object.keys(item)) {
-        //TODO Implement for groups
+      if (isGroup(item)) {
+        await this.fetchAndMapGroup(client, objects, item);
       } else {
-        const measurementFragments =
-          await this.fetchManagedObjectMeasurementFragments(client, item.id);
-        if (measurementFragments.length > 0) {
-          this.mapSensorData(objects, item, measurementFragments);
-        }
+        await this.fetchAndMapManagedObjectSensors(client, objects, item);
       }
     }
 
@@ -88,12 +86,12 @@ export class ObjectSyncJobHandler {
   }
 
   mapSensorData(
-    objects: Sensor[],
+    objects: BaseManagedObject[],
     managedObject: IManagedObject,
     measurementFragments: string[],
   ) {
     measurementFragments.forEach((fragment) => {
-      const sensor = {
+      const sensor: Sensor = {
         managedObjectId: managedObject.id,
         managedObjectName: managedObject.name ?? 'N/A',
         objectType: ObjectTypes.SENSOR,
@@ -134,5 +132,61 @@ export class ObjectSyncJobHandler {
     }
 
     return result;
+  }
+
+  async fetchAndMapManagedObjectSensors(
+    client: Client,
+    objects: Sensor[],
+    managedObject: IManagedObject,
+  ) {
+    const measurementFragments =
+      await this.fetchManagedObjectMeasurementFragments(
+        client,
+        managedObject.id,
+      );
+    if (measurementFragments.length > 0) {
+      this.mapSensorData(objects, managedObject, measurementFragments);
+    }
+  }
+
+  async fetchAndMapGroup(
+    client: Client,
+    objects: BaseManagedObject[],
+    managedObject: IManagedObject,
+  ) {
+    const groupPayload: BaseManagedObject[] = [];
+    for (const item of managedObject.childAssets.references) {
+      const managedObjectReference = item.managedObject;
+      const managedObjectDetailsResult = await client.inventory.detail({
+        id: managedObjectReference.id,
+      });
+      await this.fetchAndMapManagedObjectSensors(
+        client,
+        groupPayload,
+        managedObjectDetailsResult.data,
+      );
+      if (isGroup(managedObjectDetailsResult.data)) {
+        groupPayload.push(
+          this.mapGroupDetails(managedObjectDetailsResult.data),
+        );
+      }
+    }
+
+    objects.push(this.mapGroupDetails(managedObject, groupPayload));
+  }
+
+  mapGroupDetails(
+    managedObject: IManagedObject,
+    groupPayload: BaseManagedObject[] = [],
+  ): Group {
+    return {
+      objectType: 'GROUP',
+      managedObjectId: managedObject.id,
+      managedObjectName: managedObject.name ?? 'N/A',
+      type: managedObject.type ?? 'N/A',
+      objects: groupPayload,
+      description: managedObject.c8y_Notes,
+      owner: managedObject.owner,
+    };
   }
 }
