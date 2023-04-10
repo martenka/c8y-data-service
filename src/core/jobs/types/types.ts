@@ -25,6 +25,8 @@ export interface DataFetchJobResult {
   bucket: string;
   fileName: string;
   pathSeparator?: string;
+  dateFrom: string;
+  dateTo: string;
 }
 
 export type DataFetchJobType = IBaseJob<IDataFetchJobPayload>;

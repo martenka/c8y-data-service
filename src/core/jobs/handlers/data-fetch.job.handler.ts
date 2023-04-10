@@ -142,6 +142,8 @@ export class DataFetchJobHandler {
         filePath: savedFile.path,
         bucket: this.configService.minioEnvironment.BUCKET,
         fileName: savedFile.fileName,
+        dateFrom,
+        dateTo,
       });
     }
 

@@ -26,6 +26,8 @@ export interface DataFetchTaskResultStatusPayload {
     filePath?: string;
     fileURL?: string;
     fileName: string;
+    dateFrom: string;
+    dateTo: string;
   }[];
 }
 
