@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { MinioService } from 'nestjs-minio-client';
 import { ensureArray } from '../../utils/validation';
 import { ItemBucketMetadata, UploadedObjectInfo } from 'minio';
@@ -7,6 +7,7 @@ import { ApplicationConfigService } from '../application-config/application-conf
 
 @Injectable()
 export class FileStorageService implements OnModuleInit {
+  private readonly logger = new Logger(FileStorageService.name);
   constructor(
     private readonly configService: ApplicationConfigService,
     private readonly minioService: MinioService,
@@ -71,6 +72,9 @@ export class FileStorageService implements OnModuleInit {
     await this.minioService.client.removeObjects(
       bucketName,
       ensureArray(objectNames),
+    );
+    this.logger.log(
+      `Deleted file(s) from bucket ${bucketName} from paths ${objectNames}`,
     );
   }
 

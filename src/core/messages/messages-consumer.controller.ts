@@ -59,4 +59,27 @@ export class MessagesController {
         );
     }
   }
+
+  @RabbitSubscribe({
+    exchange: ExchangeTypes.GENERAL,
+    queue: 'dataservice.files.status',
+    routingKey: 'file.status.#',
+    createQueueIfNotExists: true,
+    allowNonJsonMessages: true,
+    errorHandler: (channel, msg, error) => {
+      console.error(error);
+    },
+  })
+  async consumeFileStatusMessage(payload: object, amqpMsg: ConsumeMessage) {
+    switch (amqpMsg.fields.routingKey) {
+      case 'file.status.deletion':
+        return this.messagesHandlerService.handleFileDeletionMessage(
+          payload as MessagesTypes['file.status.deletion'],
+        );
+      default:
+        this.logger.warn(
+          `Got unknown routingKey in consumeFileStatusMessage: ${amqpMsg.fields.routingKey}`,
+        );
+    }
+  }
 }

@@ -3,6 +3,7 @@ import {
   TaskFailedMessagePayload,
   TaskScheduledMessage,
 } from './message-types/task/types';
+import { FileDeletionMessage } from './message-types/file/type';
 
 export enum TaskSteps {
   NOT_STARTED = 'NOT_STARTED',
@@ -33,4 +34,5 @@ export interface MessagesTypes {
   'task.status.failed': TaskFailedMessage;
   'task.status': TaskStatusMessage;
   'user.user': UserMessage;
+  'file.status.deletion': FileDeletionMessage;
 }

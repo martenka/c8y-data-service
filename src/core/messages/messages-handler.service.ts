@@ -73,4 +73,23 @@ export class MessagesHandlerService {
         );
     }
   }
+
+  async handleFileDeletionMessage(
+    message: MessagesTypes['file.status.deletion'],
+  ): Promise<void> {
+    const bucketFilesMap: Map<string, string[]> = new Map();
+
+    message.files.forEach((file) => {
+      const bucketFiles: string[] | undefined = bucketFilesMap.get(file.bucket);
+      if (isNil(bucketFiles)) {
+        bucketFilesMap.set(file.bucket, [file.path]);
+      } else {
+        bucketFiles.push(file.path);
+      }
+    });
+
+    for (const [key, value] of bucketFilesMap.entries()) {
+      await this.filesService.removeFilesFromBucket(key, value);
+    }
+  }
 }
