@@ -130,7 +130,7 @@ export class DataFetchJobHandler {
         fetchedData.value.localFilePath + path.sep + fetchedData.value.fileName;
       const savedFile = await this.filesService.saveFileToBucket({
         fileInfoGenerator: this.fileStorageInfoService,
-        bucketName: this.configService.minioEnvironment.BUCKET,
+        bucketName: this.configService.minioEnvironment.PUBLIC_BUCKET,
         filePath: pathToFile,
         objectName: fetchedData.value.fileName,
       });
@@ -140,7 +140,7 @@ export class DataFetchJobHandler {
       jobResultData.push({
         sensorId: job.attrs.data.payload.data[fetchedData.index].sensor.id,
         filePath: savedFile.path,
-        bucket: this.configService.minioEnvironment.BUCKET,
+        bucket: this.configService.minioEnvironment.PUBLIC_BUCKET,
         fileName: savedFile.fileName,
         dateFrom,
         dateTo,

@@ -59,14 +59,15 @@ export class MessagesHandlerService {
 
     switch (message.taskType) {
       case TaskTypes.DATA_FETCH:
-        await this.jobsService.scheduleDataFetchJob(
+        return await this.jobsService.scheduleDataFetchJob(
           message as TaskScheduledMessage<DataFetchTaskMessagePayload>,
           isPeriodic,
         );
-        break;
       case TaskTypes.OBJECT_SYNC:
-        await this.jobsService.scheduleObjectSyncJob(message, isPeriodic);
-        break;
+        return await this.jobsService.scheduleObjectSyncJob(
+          message,
+          isPeriodic,
+        );
       default:
         this.logger.warn(
           `Skipping handling of unknown task of type: ${message?.taskType}`,
@@ -91,5 +92,11 @@ export class MessagesHandlerService {
     for (const [key, value] of bucketFilesMap.entries()) {
       await this.filesService.removeFilesFromBucket(key, value);
     }
+  }
+
+  async handleFileVisibilityStateMessage(
+    message: MessagesTypes['file.status.visibility.state'],
+  ): Promise<void> {
+    await this.jobsService.scheduleVisibilityStateChangeJob(message);
   }
 }

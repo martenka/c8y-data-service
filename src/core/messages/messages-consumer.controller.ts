@@ -5,6 +5,7 @@ import { ExchangeTypes } from './types/exchanges';
 import { MessagesTypes } from './types/messages.types';
 import { ConsumeMessage } from 'amqplib';
 import { MessagesHandlerService } from './messages-handler.service';
+import { FileVisibilityStateMessage } from './types/message-types/file/type';
 
 @Controller()
 export class MessagesController {
@@ -50,13 +51,15 @@ export class MessagesController {
   async consumeTaskMessage(payload: object, amqpMsg: ConsumeMessage) {
     switch (amqpMsg.fields.routingKey) {
       case 'task.scheduled':
-        return await this.messagesHandlerService.handleTaskScheduledMessage(
+        await this.messagesHandlerService.handleTaskScheduledMessage(
           payload as MessagesTypes['task.scheduled'],
         );
+        return;
       default:
         this.logger.warn(
           `Got unknown routingKey in consumeTaskMessage: ${amqpMsg.fields.routingKey}`,
         );
+        return;
     }
   }
 
@@ -75,6 +78,10 @@ export class MessagesController {
       case 'file.status.deletion':
         return this.messagesHandlerService.handleFileDeletionMessage(
           payload as MessagesTypes['file.status.deletion'],
+        );
+      case 'file.status.visibility.state':
+        return this.messagesHandlerService.handleFileVisibilityStateMessage(
+          payload as FileVisibilityStateMessage,
         );
       default:
         this.logger.warn(

@@ -36,7 +36,8 @@ export class ApplicationConfigService {
 
   get minioConfig(): IMinioConfig {
     return {
-      bucket: this.minioEnvironment.BUCKET,
+      publicBucket: this.minioEnvironment.PUBLIC_BUCKET,
+      privateBucket: this.minioEnvironment.PRIVATE_BUCKET,
       dataFolder: 'data',
     };
   }

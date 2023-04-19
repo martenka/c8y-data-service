@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { MinioService } from 'nestjs-minio-client';
 import { ensureArray } from '../../utils/validation';
-import { ItemBucketMetadata, UploadedObjectInfo } from 'minio';
+import { BucketItemCopy, ItemBucketMetadata, UploadedObjectInfo } from 'minio';
 import { IFileStorageInfoGenerator } from './types/types';
 import { ApplicationConfigService } from '../application-config/application-config.service';
 
@@ -85,12 +85,59 @@ export class FileStorageService implements OnModuleInit {
     try {
       await this.minioService.client.statObject(bucketName, objectName);
     } catch (e) {
-      return true;
+      return false;
     }
-    return false;
+    return true;
+  }
+
+  async moveObject(
+    existingObjectBucket: string,
+    existingObjectPathInBucket: string,
+    newBucket: string,
+    newPathInBucket?: string,
+  ): Promise<BucketItemCopy & { bucket: string; objectPath: string }> {
+    const copyConditions = this.minioService.copyConditions;
+    const copiedObjectPath = newPathInBucket ?? existingObjectPathInBucket;
+
+    const isObjectPresent = await this.isObjectExisting(
+      existingObjectBucket,
+      existingObjectPathInBucket,
+    );
+
+    if (!isObjectPresent) {
+      throw new Error(
+        `Object of ${existingObjectBucket}/${existingObjectPathInBucket} is not present in min.io`,
+      );
+    }
+
+    const copyResult = await this.minioService.client.copyObject(
+      newBucket,
+      copiedObjectPath,
+      `${existingObjectBucket}/${existingObjectPathInBucket}`,
+      copyConditions,
+    );
+
+    await this.removeFilesFromBucket(
+      existingObjectBucket,
+      existingObjectPathInBucket,
+    );
+
+    return {
+      ...copyResult,
+      bucket: newBucket,
+      objectPath: copiedObjectPath,
+    };
   }
 
   async onModuleInit(): Promise<void> {
-    await this.minioService.client.makeBucket('public', 'eu-central-1');
+    await this.minioService.client.makeBucket(
+      this.configService.minioConfig.publicBucket,
+      'eu-central-1',
+    );
+
+    await this.minioService.client.makeBucket(
+      this.configService.minioConfig.privateBucket,
+      'eu-central-1',
+    );
   }
 }

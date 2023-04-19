@@ -10,12 +10,16 @@ import {
   IBaseJob,
   IJobOptions,
   ObjectSyncJobType,
+  VisibilityStateChangeJobType,
+  IDataFetchJobPayload,
 } from './types/types';
 import { JobNotFoundError } from './errors/job-not-found.error';
 import {
   DataFetchTaskMessagePayload,
   TaskScheduledMessage,
+  VisibilityStateChangeTaskMessagePayload,
 } from '../messages/types/message-types/task/types';
+import { TaskTypes } from '../messages/types/messages.types';
 
 @Injectable()
 export class JobsService implements OnModuleDestroy {
@@ -65,7 +69,7 @@ export class JobsService implements OnModuleDestroy {
       .save()) as Job<T>;
   }
 
-  async scheduleSingleJob<T extends IBaseJob>(
+  async scheduleSingleJob<T>(
     type: string,
     runAt: string | Date,
     data?: T,
@@ -95,16 +99,14 @@ export class JobsService implements OnModuleDestroy {
     jobInput: TaskScheduledMessage<DataFetchTaskMessagePayload>,
     isPeriodic = false,
   ): Promise<Job<DataFetchJobType>> {
-    const jobData: DataFetchJobType = {
-      label: jobInput.taskName,
-      remoteTaskId: jobInput.taskId,
-      initiatedByUser: jobInput.initiatedByUser,
-      payload: {
-        dateFrom: jobInput.payload.dateFrom,
-        dateTo: jobInput.payload.dateTo,
-        data: ensureArray(jobInput.payload.data),
-      },
+    const jobPayload: IDataFetchJobPayload = {
+      dateFrom: jobInput.payload.dateFrom,
+      dateTo: jobInput.payload.dateTo,
+      data: ensureArray(jobInput.payload.data),
     };
+
+    const jobData = this.mapJobData(jobInput, jobPayload);
+
     if (isPeriodic) {
       jobData.payload.periodicData = {
         fetchDurationSeconds: jobInput.periodicData.fetchDurationSeconds,
@@ -126,6 +128,23 @@ export class JobsService implements OnModuleDestroy {
     };
 
     return await this.scheduleJob(jobInput, jobData, isPeriodic);
+  }
+
+  async scheduleVisibilityStateChangeJob(
+    jobInput: VisibilityStateChangeTaskMessagePayload,
+  ): Promise<Job<VisibilityStateChangeJobType>> {
+    const jobPayload: VisibilityStateChangeJobType = {
+      newVisibilityState: jobInput.newVisibilityState,
+      filePath: jobInput.filePath,
+      bucket: jobInput.bucket,
+      fileId: jobInput.fileId,
+    };
+
+    return await this.scheduleSingleJob(
+      TaskTypes.VISIBILITY_STATE_CHANGE,
+      new Date(),
+      jobPayload,
+    );
   }
 
   /**
@@ -167,6 +186,18 @@ export class JobsService implements OnModuleDestroy {
       jobInput.firstRunAt ?? new Date(),
       jobData,
     );
+  }
+
+  private mapJobData<T extends TaskScheduledMessage, P extends object>(
+    jobInput: T,
+    payload: P,
+  ): IBaseJob<P> {
+    return {
+      label: jobInput.taskName,
+      remoteTaskId: jobInput.taskId,
+      initiatedByUser: jobInput.initiatedByUser,
+      payload: payload,
+    };
   }
 
   async onModuleDestroy(): Promise<void> {

@@ -1,4 +1,10 @@
 import { DataFetchTaskMessagePayload } from '../../messages/types/message-types/task/types';
+import { Job } from '@hokify/agenda';
+import { FileVisibilityStateMessage } from '../../messages/types/message-types/file/type';
+
+export interface JobHandler<T, R = unknown> {
+  handle: (job: Job<T>) => Promise<R>;
+}
 
 export interface IBaseJob<P = object> {
   remoteTaskId: string;
@@ -32,3 +38,7 @@ export interface DataFetchJobResult {
 export type DataFetchJobType = IBaseJob<IDataFetchJobPayload>;
 
 export type ObjectSyncJobType = IBaseJob<object>;
+
+export type VisibilityStateChangeJobType = FileVisibilityStateMessage;
+
+export type VisibilityStateChangeJobResult = FileVisibilityStateMessage;

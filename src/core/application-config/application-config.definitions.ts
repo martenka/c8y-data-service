@@ -3,6 +3,7 @@ import {
   IsNumber,
   IsString,
   IsNotEmpty,
+  IsOptional,
   ValidateNested,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
@@ -37,8 +38,13 @@ export class MinioConfig {
   @IsBoolean()
   USE_SSL = false;
 
+  @IsOptional()
   @IsString()
-  BUCKET: string;
+  PUBLIC_BUCKET = 'public';
+
+  @IsOptional()
+  @IsString()
+  PRIVATE_BUCKET = 'private';
 }
 
 export class MongoConfig {

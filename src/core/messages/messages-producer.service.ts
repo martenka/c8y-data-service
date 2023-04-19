@@ -31,4 +31,14 @@ export class MessagesProducerService {
   sendTaskFailedMessage(message: MessagesTypes['task.status.failed']) {
     this.sendMessage(ExchangeTypes.GENERAL, 'task.status.failed', message);
   }
+
+  sendFileVisibilityResultMessage(
+    message: MessagesTypes['file.result.visibility.state'],
+  ) {
+    this.sendMessage(
+      ExchangeTypes.GENERAL,
+      'file.result.visibility.state',
+      message,
+    );
+  }
 }

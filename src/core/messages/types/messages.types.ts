@@ -3,7 +3,11 @@ import {
   TaskFailedMessagePayload,
   TaskScheduledMessage,
 } from './message-types/task/types';
-import { FileDeletionMessage } from './message-types/file/type';
+import {
+  FileDeletionMessage,
+  FileVisibilityStateMessage,
+  VisibilityStateResultMessage,
+} from './message-types/file/type';
 
 export enum TaskSteps {
   NOT_STARTED = 'NOT_STARTED',
@@ -16,6 +20,12 @@ export enum TaskSteps {
 export enum TaskTypes {
   DATA_FETCH = 'DATA_FETCH',
   OBJECT_SYNC = 'OBJECT_SYNC',
+  VISIBILITY_STATE_CHANGE = 'VISIBILITY_STATE_CHANGE',
+}
+
+export enum VisibilityState {
+  PUBLIC = 'PUBLIC',
+  PRIVATE = 'PRIVATE',
 }
 
 export type TaskStatus = keyof typeof TaskSteps;
@@ -35,4 +45,6 @@ export interface MessagesTypes {
   'task.status': TaskStatusMessage;
   'user.user': UserMessage;
   'file.status.deletion': FileDeletionMessage;
+  'file.status.visibility.state': FileVisibilityStateMessage;
+  'file.result.visibility.state': VisibilityStateResultMessage;
 }

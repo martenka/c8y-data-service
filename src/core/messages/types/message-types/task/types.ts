@@ -1,4 +1,5 @@
 import { CustomAttributes } from '../../../../../models/types/types';
+import { TaskTypes, VisibilityState } from '../../messages.types';
 
 export enum ObjectTypes {
   SENSOR = 'SENSOR',
@@ -57,9 +58,16 @@ export interface ObjectSyncTaskResultPayload {
   objectAmount: number;
 }
 
+export interface VisibilityStateChangeTaskMessagePayload {
+  newVisibilityState: VisibilityState;
+  bucket: string;
+  filePath: string;
+  fileId: string;
+}
+
 export interface TaskScheduledMessage<P extends object = object> {
   taskId: string;
-  taskType: string;
+  taskType: TaskTypes;
   taskName: string;
   initiatedByUser: string;
   firstRunAt?: string;

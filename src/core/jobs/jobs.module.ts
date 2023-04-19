@@ -14,6 +14,7 @@ import { CumulocityModule } from '../cumulocity/cumulocity.module';
 import { FileStorageModule } from '../file-storage/file-storage.module';
 import { UsersModule } from '../users/users.module';
 import { ObjectSyncJobHandler } from './handlers/object-sync.job.handler';
+import { VisibilityStateChangeJobHandler } from './handlers/visibilitystate-change-job.handler';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { ObjectSyncJobHandler } from './handlers/object-sync.job.handler';
     },
     DataFetchJobHandler,
     ObjectSyncJobHandler,
+    VisibilityStateChangeJobHandler,
     JobsRunner,
     JobsService,
   ],

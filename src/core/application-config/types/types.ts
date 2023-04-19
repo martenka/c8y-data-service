@@ -1,4 +1,5 @@
 export interface IMinioConfig {
-  bucket: string;
+  publicBucket: string;
+  privateBucket: string;
   dataFolder: string;
 }
