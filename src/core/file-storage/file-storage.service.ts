@@ -36,20 +36,26 @@ export class FileStorageService implements OnModuleInit {
     const folderPath = fileInfoGenerator.getPath(
       this.configService.minioConfig.dataFolder,
     );
-
     let fileName = objectName;
     let objectWithPath = `${folderPath}/${fileName}`;
     let isObjectExisting = await this.isObjectExisting(
       bucketName,
       objectWithPath,
     );
-    while (!isObjectExisting) {
+    let triesLeft = 20;
+    while (isObjectExisting) {
       fileName = fileInfoGenerator.getFileName(objectName);
       objectWithPath = `${folderPath}/${fileName}`;
       isObjectExisting = await this.isObjectExisting(
         bucketName,
         objectWithPath,
       );
+      triesLeft -= 1;
+      if (triesLeft <= 0) {
+        throw new Error(
+          'Could not generate a name for downloaded data file after 20 tries!',
+        );
+      }
     }
     const savedObject = await this.minioService.client.fPutObject(
       bucketName,

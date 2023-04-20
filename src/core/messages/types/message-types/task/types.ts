@@ -1,5 +1,5 @@
 import { CustomAttributes } from '../../../../../models/types/types';
-import { TaskTypes, VisibilityState } from '../../messages.types';
+import { TaskTypes } from '../../messages.types';
 
 export enum ObjectTypes {
   SENSOR = 'SENSOR',
@@ -24,6 +24,7 @@ export interface DataFetchTaskResultStatusPayload {
   sensors: {
     sensorId: string;
     bucket: string;
+    isPublicBucket: boolean;
     filePath?: string;
     fileURL?: string;
     fileName: string;
@@ -56,13 +57,6 @@ export interface ObjectSyncTaskStatusPayload {
 
 export interface ObjectSyncTaskResultPayload {
   objectAmount: number;
-}
-
-export interface VisibilityStateChangeTaskMessagePayload {
-  newVisibilityState: VisibilityState;
-  bucket: string;
-  filePath: string;
-  fileId: string;
 }
 
 export interface TaskScheduledMessage<P extends object = object> {

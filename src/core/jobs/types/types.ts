@@ -29,6 +29,7 @@ export interface DataFetchJobResult {
   sensorId: string;
   filePath: string;
   bucket: string;
+  isPublicBucket: boolean;
   fileName: string;
   pathSeparator?: string;
   dateFrom: string;

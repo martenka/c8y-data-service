@@ -17,9 +17,9 @@ import { JobNotFoundError } from './errors/job-not-found.error';
 import {
   DataFetchTaskMessagePayload,
   TaskScheduledMessage,
-  VisibilityStateChangeTaskMessagePayload,
 } from '../messages/types/message-types/task/types';
 import { TaskTypes } from '../messages/types/messages.types';
+import { FileVisibilityStateMessage } from '../messages/types/message-types/file/type';
 
 @Injectable()
 export class JobsService implements OnModuleDestroy {
@@ -131,7 +131,7 @@ export class JobsService implements OnModuleDestroy {
   }
 
   async scheduleVisibilityStateChangeJob(
-    jobInput: VisibilityStateChangeTaskMessagePayload,
+    jobInput: FileVisibilityStateMessage,
   ): Promise<Job<VisibilityStateChangeJobType>> {
     const jobPayload: VisibilityStateChangeJobType = {
       newVisibilityState: jobInput.newVisibilityState,

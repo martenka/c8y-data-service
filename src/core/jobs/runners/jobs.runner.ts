@@ -6,7 +6,6 @@ import {
   DataFetchJobType,
   IBaseJob,
   ObjectSyncJobType,
-  VisibilityStateChangeJobResult,
   VisibilityStateChangeJobType,
 } from '../types/types';
 import { MessagesProducerService } from '../../messages/messages-producer.service';
