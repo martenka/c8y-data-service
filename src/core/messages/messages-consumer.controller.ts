@@ -6,6 +6,8 @@ import { MessagesTypes } from './types/messages.types';
 import { ConsumeMessage } from 'amqplib';
 import { MessagesHandlerService } from './messages-handler.service';
 import { FileVisibilityStateMessage } from './types/message-types/file/type';
+import { MessagesProducerService } from './messages-producer.service';
+import { withTaskSchedulingErrorHandler } from '../../utils/helpers';
 
 @Controller()
 export class MessagesController {
@@ -13,6 +15,7 @@ export class MessagesController {
 
   constructor(
     private readonly messagesHandlerService: MessagesHandlerService,
+    private readonly messagesProducerService: MessagesProducerService,
   ) {}
 
   @RabbitSubscribe({
@@ -45,14 +48,20 @@ export class MessagesController {
     createQueueIfNotExists: true,
     allowNonJsonMessages: true,
     errorHandler: (channel, msg, error) => {
+      console.log('RabbitSubscribe error handler');
       console.error(error);
     },
   })
-  async consumeTaskMessage(payload: object, amqpMsg: ConsumeMessage) {
+  async consumeTaskMessage(
+    payload: MessagesTypes['task.scheduled'],
+    amqpMsg: ConsumeMessage,
+  ) {
     switch (amqpMsg.fields.routingKey) {
       case 'task.scheduled':
-        await this.messagesHandlerService.handleTaskScheduledMessage(
-          payload as MessagesTypes['task.scheduled'],
+        await withTaskSchedulingErrorHandler(
+          () => this.messagesHandlerService.handleTaskScheduledMessage(payload),
+          this.messagesProducerService,
+          payload,
         );
         return;
       default:

@@ -19,6 +19,7 @@ export enum TaskSteps {
 
 export enum TaskTypes {
   DATA_FETCH = 'DATA_FETCH',
+  DATA_UPLOAD = 'DATA_UPLOAD',
   OBJECT_SYNC = 'OBJECT_SYNC',
   VISIBILITY_STATE_CHANGE = 'VISIBILITY_STATE_CHANGE',
 }

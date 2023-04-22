@@ -12,20 +12,29 @@ import {
   ObjectSyncJobType,
   VisibilityStateChangeJobType,
   IDataFetchJobPayload,
+  DataUploadJobType,
+  DataUploadJobData,
+  DataUploadJobPlatform,
 } from './types/types';
 import { JobNotFoundError } from './errors/job-not-found.error';
 import {
   DataFetchTaskMessagePayload,
+  DataUploadTaskScheduledMessage,
   TaskScheduledMessage,
 } from '../messages/types/message-types/task/types';
 import { TaskTypes } from '../messages/types/messages.types';
 import { FileVisibilityStateMessage } from '../messages/types/message-types/file/type';
+import { ApplicationConfigService } from '../application-config/application-config.service';
+import { Platform } from '../../global/tokens';
 
 @Injectable()
 export class JobsService implements OnModuleDestroy {
   private readonly logger = new Logger(JobsService.name);
 
-  constructor(private readonly agenda: Agenda) {}
+  constructor(
+    private readonly agenda: Agenda,
+    private readonly configService: ApplicationConfigService,
+  ) {}
 
   async findJobs<T extends IBaseJob>(
     query?: Omit<Filter<IJobParameters<T>>, '_id'> & { _id: Types.ObjectId },
@@ -145,6 +154,41 @@ export class JobsService implements OnModuleDestroy {
       new Date(),
       jobPayload,
     );
+  }
+
+  async scheduleDataUploadJob(
+    jobInput: DataUploadTaskScheduledMessage,
+  ): Promise<Job<DataUploadJobType>> {
+    const ckanCredentials = this.configService.ckanConfig;
+    let platform: DataUploadJobPlatform;
+
+    switch (jobInput.payload.platform.platformIdentifier) {
+      case Platform.CKAN:
+        platform = {
+          platform: {
+            CKAN: {
+              authToken: ckanCredentials.authToken,
+              organisationId: ckanCredentials.organisationId,
+              password: ckanCredentials.password,
+              username: ckanCredentials.username,
+            },
+          },
+        };
+        break;
+      default:
+        throw new Error(
+          `Unable to schedule job - unknown platform ${jobInput.payload.platform.platformIdentifier}`,
+        );
+    }
+
+    const jobPayload: DataUploadJobData = {
+      ...platform,
+      files: jobInput.payload.files,
+    };
+
+    const job = this.mapJobData(jobInput, jobPayload);
+
+    return await this.scheduleJob(jobInput, job);
   }
 
   /**

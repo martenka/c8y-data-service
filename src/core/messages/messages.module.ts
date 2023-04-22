@@ -28,7 +28,7 @@ import { JobsModule } from '../jobs/jobs.module';
             createExchangeIfNotExists: true,
           },
         ],
-        uri: `amqp://${config.rabbitConfig.RABBITMQ_DEFAULT_USER}:${config.rabbitConfig.RABBITMQ_DEFAULT_PASS}@localhost:5672`,
+        uri: `amqp://${config.messagesBrokerConfig.username}:${config.messagesBrokerConfig.username}@localhost:5672`,
         prefetchCount: 1,
         enableControllerDiscovery: true,
         connectionInitOptions: {

@@ -1,6 +1,8 @@
 import { DataFetchTaskMessagePayload } from '../../messages/types/message-types/task/types';
 import { Job } from '@hokify/agenda';
 import { FileVisibilityStateMessage } from '../../messages/types/message-types/file/type';
+import { DataUploadTaskMessagePayload } from '../../messages/types/message-types/task/data-upload';
+import { Platform } from '../../../global/tokens';
 
 export interface JobHandler<T, R = unknown> {
   handle: (job: Job<T>) => Promise<R>;
@@ -43,3 +45,17 @@ export type ObjectSyncJobType = IBaseJob<object>;
 export type VisibilityStateChangeJobType = FileVisibilityStateMessage;
 
 export type VisibilityStateChangeJobResult = FileVisibilityStateMessage;
+
+export type DataUploadJobData = Pick<DataUploadTaskMessagePayload, 'files'> & {
+  platform: Partial<{
+    [Platform.CKAN]: {
+      organisationId: string;
+      username: string;
+      password: string;
+      authToken: string;
+    };
+  }>;
+};
+
+export type DataUploadJobPlatform = Pick<DataUploadJobData, 'platform'>;
+export type DataUploadJobType = IBaseJob<DataUploadJobData>;

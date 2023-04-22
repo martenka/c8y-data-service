@@ -4,6 +4,7 @@ import { Job } from '@hokify/agenda';
 import { TaskSteps, TaskTypes } from '../../messages/types/messages.types';
 import {
   DataFetchJobType,
+  DataUploadJobType,
   IBaseJob,
   ObjectSyncJobType,
   VisibilityStateChangeJobType,
@@ -98,6 +99,23 @@ export class JobsRunner {
         `Job ${job.attrs.name} ${job.attrs._id?.toString()} finished`,
       );
     }
+  }
+
+  @DefineJob(TaskTypes.DATA_UPLOAD)
+  async runDataUploadJob(job: Job<DataUploadJobType>) {
+    await this.withTaskStatusHandler(job, () => Promise.resolve());
+    this.messageProducerService.sendTaskStatusMessage({
+      taskId: job.attrs.data.remoteTaskId,
+      status: TaskSteps.DONE,
+      taskType: job.attrs.name,
+      payload: {},
+    });
+
+    this.logger.log(
+      `Job ${
+        job.attrs.name
+      } ${job.attrs._id?.toString()} finished uploading data`,
+    );
   }
 
   private async withTaskStatusHandler<T>(

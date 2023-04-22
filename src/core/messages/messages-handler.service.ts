@@ -14,6 +14,7 @@ import { JobsService } from '../jobs/jobs.service';
 
 import {
   DataFetchTaskMessagePayload,
+  DataUploadTaskScheduledMessage,
   TaskScheduledMessage,
 } from './types/message-types/task/types';
 import { isPeriodicWork } from '../../utils/task';
@@ -68,11 +69,19 @@ export class MessagesHandlerService {
           message,
           isPeriodic,
         );
-      default:
+      case TaskTypes.DATA_UPLOAD:
+        return await this.jobsService.scheduleDataUploadJob(
+          message as DataUploadTaskScheduledMessage,
+        );
+      default: {
         this.logger.warn(
           `Skipping handling of unknown task of type: ${message?.taskType}`,
         );
+      }
     }
+    throw new Error(
+      `Skipping handling of unknown task of type: ${message?.taskType}`,
+    );
   }
 
   async handleFileDeletionMessage(

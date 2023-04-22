@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  CkanConfig,
   MinioConfig,
   MongoConfig,
   RabbitConfig,
@@ -7,15 +8,16 @@ import {
 } from './application-config.definitions';
 import { MongooseModuleOptions } from '@nestjs/mongoose';
 import { AgendaConfig } from 'nestjs-agenda-plus';
-import { IMinioConfig } from './types/types';
+import { ICkanConfig, IMinioConfig, UsernamePassword } from './types/types';
 
 @Injectable()
 export class ApplicationConfigService {
   constructor(
     readonly mainConfig: RootConfig,
-    readonly rabbitConfig: RabbitConfig,
+    private readonly rabbitConfig: RabbitConfig,
     readonly minioEnvironment: MinioConfig,
-    readonly mongoEnvironment: MongoConfig,
+    private readonly mongoEnvironment: MongoConfig,
+    private readonly ckanEnvironment: CkanConfig,
   ) {}
   get mongooseModuleOptions(): MongooseModuleOptions {
     return {
@@ -39,6 +41,22 @@ export class ApplicationConfigService {
       publicBucket: this.minioEnvironment.PUBLIC_BUCKET,
       privateBucket: this.minioEnvironment.PRIVATE_BUCKET,
       dataFolder: 'data',
+    };
+  }
+
+  get ckanConfig(): ICkanConfig {
+    return {
+      organisationId: this.ckanEnvironment.ORGANISATION_ID,
+      username: this.ckanEnvironment.USERNAME,
+      password: this.ckanEnvironment.PASSWORD,
+      authToken: this.ckanEnvironment.AUTH_TOKEN,
+    };
+  }
+
+  get messagesBrokerConfig(): UsernamePassword {
+    return {
+      username: this.rabbitConfig.RABBITMQ_DEFAULT_USER,
+      password: this.rabbitConfig.RABBITMQ_DEFAULT_PASS,
     };
   }
 }

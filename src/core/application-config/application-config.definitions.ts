@@ -61,6 +61,20 @@ export class MongoConfig {
   PORT = '27017';
 }
 
+export class CkanConfig {
+  @IsString()
+  ORGANISATION_ID: string;
+
+  @IsString()
+  USERNAME: string;
+
+  @IsString()
+  PASSWORD: string;
+
+  @IsString()
+  AUTH_TOKEN: string;
+}
+
 export class RootConfig {
   @Type(() => RabbitConfig)
   @ValidateNested()
@@ -73,4 +87,8 @@ export class RootConfig {
   @Type(() => MongoConfig)
   @ValidateNested()
   MONGO: MongoConfig;
+
+  @Type(() => CkanConfig)
+  @ValidateNested()
+  CKAN: CkanConfig;
 }

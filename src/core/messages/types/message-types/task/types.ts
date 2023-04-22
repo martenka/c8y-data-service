@@ -1,5 +1,6 @@
 import { CustomAttributes } from '../../../../../models/types/types';
 import { TaskTypes } from '../../messages.types';
+import { DataUploadTaskMessagePayload } from './data-upload';
 
 export enum ObjectTypes {
   SENSOR = 'SENSOR',
@@ -71,6 +72,9 @@ export interface TaskScheduledMessage<P extends object = object> {
   };
   payload: P;
 }
+
+export type DataUploadTaskScheduledMessage =
+  TaskScheduledMessage<DataUploadTaskMessagePayload>;
 
 export interface TaskFailedMessagePayload {
   reason: string;

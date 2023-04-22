@@ -3,6 +3,9 @@ import { ParsedPromisesResult } from './types';
 import { Types } from 'mongoose';
 import { Buffer } from 'buffer';
 import { ObjectIdLike, BSONError } from 'bson';
+import { TaskSteps } from '../core/messages/types/messages.types';
+import { MessagesProducerService } from '../core/messages/messages-producer.service';
+import { TaskScheduledMessage } from '../core/messages/types/message-types/task/types';
 
 type TestType =
   | string
@@ -69,4 +72,39 @@ export async function awaitAllPromises<T>(
   });
 
   return result;
+}
+
+export async function withTaskSchedulingErrorHandler<T>(
+  handler: () => Promise<T>,
+  messageProducerService: MessagesProducerService,
+  message: TaskScheduledMessage,
+): Promise<T> {
+  try {
+    return await handler();
+  } catch (e) {
+    let reason: string | undefined;
+    if (e instanceof Error) {
+      reason = e.message;
+    }
+
+    const messageKeys = Object.keys(message);
+    const requiredMessageKeys: (keyof TaskScheduledMessage)[] = [
+      'taskId',
+      'taskType',
+    ];
+    if (
+      requiredMessageKeys.every((key) =>
+        messageKeys.includes(key as keyof TaskScheduledMessage),
+      )
+    ) {
+      messageProducerService.sendTaskFailedMessage({
+        status: TaskSteps.FAILED,
+        taskId: message.taskId,
+        taskType: message.taskType,
+        payload: {
+          reason: reason || 'Task scheduling failed with unknown error',
+        },
+      });
+    }
+  }
 }
