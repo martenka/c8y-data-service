@@ -46,6 +46,7 @@ export class ApplicationConfigService {
 
   get ckanConfig(): ICkanConfig {
     return {
+      baseURL: this.ckanEnvironment.BASE_URL,
       organisationId: this.ckanEnvironment.ORGANISATION_ID,
       username: this.ckanEnvironment.USERNAME,
       password: this.ckanEnvironment.PASSWORD,

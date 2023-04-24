@@ -12,4 +12,5 @@ export interface IMinioConfig {
 export type ICkanConfig = {
   organisationId: string;
   authToken: string;
+  baseURL: string;
 } & UsernamePassword;

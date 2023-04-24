@@ -63,6 +63,9 @@ export class MongoConfig {
 
 export class CkanConfig {
   @IsString()
+  BASE_URL: string;
+
+  @IsString()
   ORGANISATION_ID: string;
 
   @IsString()
