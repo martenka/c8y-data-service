@@ -2,7 +2,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { JobsService } from './jobs.service';
 import { ApplicationConfigService } from '../application-config/application-config.service';
 import { Connection } from 'mongoose';
-import { getConnectionToken } from '@nestjs/mongoose';
+import { getConnectionToken, MongooseModule } from '@nestjs/mongoose';
 import { JobsRunner } from './runners/jobs.runner';
 import { AgendaModule } from 'nestjs-agenda-plus';
 import { join } from 'path';
@@ -15,10 +15,17 @@ import { FileStorageModule } from '../file-storage/file-storage.module';
 import { UsersModule } from '../users/users.module';
 import { ObjectSyncJobHandler } from './handlers/object-sync.job.handler';
 import { VisibilityStateChangeJobHandler } from './handlers/visibilitystate-change-job.handler';
+import { CkanGroup, CkanGroupSchema } from '../../models/CkanGroup';
+import { DataUploadJobHandler } from './handlers/data-upload.job.handler';
+import { CkanModule } from '../ckan/ckan.module';
 
 @Module({
   imports: [
+    CkanModule,
     CumulocityModule,
+    MongooseModule.forFeature([
+      { name: CkanGroup.name, schema: CkanGroupSchema },
+    ]),
     FileStorageModule,
     UsersModule,
     forwardRef(() => MessagesModule),
@@ -38,7 +45,6 @@ import { VisibilityStateChangeJobHandler } from './handlers/visibilitystate-chan
     {
       provide: LOCAL_DATA_DOWNLOAD_FOLDER,
       useFactory: () => {
-        console.log(process.cwd());
         const dataPath = join(process.cwd(), 'downloads');
         mkdirSync(dataPath, { recursive: true });
         return dataPath;
@@ -47,6 +53,7 @@ import { VisibilityStateChangeJobHandler } from './handlers/visibilitystate-chan
     DataFetchJobHandler,
     ObjectSyncJobHandler,
     VisibilityStateChangeJobHandler,
+    DataUploadJobHandler,
     JobsRunner,
     JobsService,
   ],

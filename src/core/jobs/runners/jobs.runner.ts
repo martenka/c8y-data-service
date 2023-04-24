@@ -17,6 +17,7 @@ import {
 } from '../../messages/types/message-types/task/types';
 import { ObjectSyncJobHandler } from '../handlers/object-sync.job.handler';
 import { VisibilityStateChangeJobHandler } from '../handlers/visibilitystate-change-job.handler';
+import { DataUploadJobHandler } from '../handlers/data-upload.job.handler';
 
 @Injectable()
 export class JobsRunner {
@@ -27,6 +28,7 @@ export class JobsRunner {
     private readonly dataFetchJobHandler: DataFetchJobHandler,
     private readonly objectSyncJobHandler: ObjectSyncJobHandler,
     private readonly visibilityStateChangeJobHandler: VisibilityStateChangeJobHandler,
+    private readonly dataUploadJobHandler: DataUploadJobHandler,
   ) {}
 
   @DefineJob(TaskTypes.DATA_FETCH)
@@ -103,7 +105,9 @@ export class JobsRunner {
 
   @DefineJob(TaskTypes.DATA_UPLOAD)
   async runDataUploadJob(job: Job<DataUploadJobType>) {
-    await this.withTaskStatusHandler(job, () => Promise.resolve());
+    await this.withTaskStatusHandler(job, () =>
+      this.dataUploadJobHandler.handle(job),
+    );
     this.messageProducerService.sendTaskStatusMessage({
       taskId: job.attrs.data.remoteTaskId,
       status: TaskSteps.DONE,

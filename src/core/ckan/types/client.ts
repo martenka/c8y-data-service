@@ -3,6 +3,7 @@ import { Readable as ReadableStream } from 'stream';
 export interface CkanBaseResponse<T> {
   success: boolean;
   result: T;
+  error: Record<string, unknown>;
 }
 
 export interface CkanTag {
@@ -19,16 +20,16 @@ export interface CkanCreatePackageGroup {
   name: string;
 }
 export interface CkanCreatePackageParameters {
+  // Package/dataset name
   name: string;
   private?: boolean;
   author?: string;
   author_email?: string;
   // Description of the dataset
   notes?: string;
-  // ID of the organisation owning ths dataset/package
-  mainter?: string;
+  maintainer?: string;
   maintainer_email?: string;
-  // ID of the datasets owning organisation
+  // ID of the organisation owning ths dataset/package
   owner_org: string;
   tags?: CkanTag[];
   extras?: CkanExtra[];
@@ -71,6 +72,7 @@ export interface CkanGroup {
   state?: string | null;
   package_count?: number | null;
   type?: string | null;
+  description?: string | null;
   extras?: CkanExtra[];
   tags?: CkanTag[];
   groups: CkanGroup[];

@@ -6,6 +6,8 @@ import { ObjectIdLike, BSONError } from 'bson';
 import { TaskSteps } from '../core/messages/types/messages.types';
 import { MessagesProducerService } from '../core/messages/messages-producer.service';
 import { TaskScheduledMessage } from '../core/messages/types/message-types/task/types';
+import { CustomAttributes } from '../models/types/types';
+import { CkanExtra } from '../core/ckan/types/client';
 
 type TestType =
   | string
@@ -106,5 +108,40 @@ export async function withTaskSchedulingErrorHandler<T>(
         },
       });
     }
+  }
+}
+
+/**
+ * Adds recursively custom attributes to specified CKAN extras array inplace
+ * using . as delimiter
+ */
+export function addCustomAttributesToExtras(
+  attributes: CustomAttributes,
+  extras: CkanExtra[],
+  path = '',
+) {
+  Object.keys(attributes).forEach((key) => {
+    const value = attributes[key];
+    if (typeof value === 'string') {
+      extras.push({ key: `${path}${key}`, value });
+    } else {
+      this.addCustomAttributesToExtras(value, extras, `${path}${key}.`);
+    }
+  });
+}
+
+/**
+ * Tries to stringify input returning undefined failure
+ * @return 'string' or 'undefined' on error
+ */
+export function tryStringify(value: unknown): string | undefined {
+  const types = ['string', 'number', 'boolean'];
+  if (types.includes(typeof value)) {
+    return value.toString();
+  }
+  try {
+    return JSON.stringify(value);
+  } catch (e) {
+    return undefined;
   }
 }
