@@ -90,11 +90,6 @@ export interface CkanResource {
   url?: string | null;
   datastore_active?: boolean;
 }
-export interface CkanFindGroup {
-  id: string;
-  name: string;
-  title?: string;
-}
 
 export interface CkanClient {
   createPackage: (
@@ -106,5 +101,5 @@ export interface CkanClient {
   createResource: (
     parameters: CkanCreateResourceParameters,
   ) => Promise<CkanBaseResponse<CkanResource>>;
-  findGroup: (name: string) => Promise<CkanBaseResponse<CkanFindGroup[]>>;
+  findGroup: (name: string) => Promise<CkanBaseResponse<CkanGroup>>;
 }

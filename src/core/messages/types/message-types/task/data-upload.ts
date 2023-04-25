@@ -12,7 +12,8 @@ export interface DataUploadMessageMetadata {
   valueFragmentType: string;
   valueFragmentDescription?: string;
   managedObjectName?: string;
-  description?: string;
+  sensorDescription?: string;
+  fileDescription?: string;
 }
 
 export interface DataUploadMessageFile {

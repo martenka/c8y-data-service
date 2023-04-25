@@ -2,7 +2,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { JobsService } from './jobs.service';
 import { ApplicationConfigService } from '../application-config/application-config.service';
 import { Connection } from 'mongoose';
-import { getConnectionToken, MongooseModule } from '@nestjs/mongoose';
+import { getConnectionToken } from '@nestjs/mongoose';
 import { JobsRunner } from './runners/jobs.runner';
 import { AgendaModule } from 'nestjs-agenda-plus';
 import { join } from 'path';
@@ -15,7 +15,6 @@ import { FileStorageModule } from '../file-storage/file-storage.module';
 import { UsersModule } from '../users/users.module';
 import { ObjectSyncJobHandler } from './handlers/object-sync.job.handler';
 import { VisibilityStateChangeJobHandler } from './handlers/visibilitystate-change-job.handler';
-import { CkanGroup, CkanGroupSchema } from '../../models/CkanGroup';
 import { DataUploadJobHandler } from './handlers/data-upload.job.handler';
 import { CkanModule } from '../ckan/ckan.module';
 
@@ -23,9 +22,6 @@ import { CkanModule } from '../ckan/ckan.module';
   imports: [
     CkanModule,
     CumulocityModule,
-    MongooseModule.forFeature([
-      { name: CkanGroup.name, schema: CkanGroupSchema },
-    ]),
     FileStorageModule,
     UsersModule,
     forwardRef(() => MessagesModule),

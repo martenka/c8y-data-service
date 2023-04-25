@@ -6,7 +6,6 @@ import {
   CkanCreateGroupParameters,
   CkanCreatePackageParameters,
   CkanCreateResourceParameters,
-  CkanFindGroup,
   CkanGroup,
   CkanPackage,
   CkanResource,
@@ -14,6 +13,7 @@ import {
 import FormData from 'form-data';
 import fetch from 'node-fetch';
 import * as https from 'https';
+import { notNil } from '../../utils/validation';
 
 @Injectable()
 export class CkanService implements CkanClient {
@@ -120,13 +120,14 @@ export class CkanService implements CkanClient {
     );
   }
 
-  async findGroup(name: string): Promise<CkanBaseResponse<CkanFindGroup[]>> {
+  async findGroup(name: string): Promise<CkanBaseResponse<CkanGroup>> {
     const url = new URL(
-      '/api/3/action/group_autocomplete',
+      '/api/3/action/group_show',
       this.configService.ckanConfig.baseURL,
     );
+    url.searchParams.set('id', name);
     const response = await fetch(url, {
-      method: 'POST',
+      method: 'GET',
       agent: new https.Agent({
         rejectUnauthorized: false,
       }),
@@ -134,19 +135,9 @@ export class CkanService implements CkanClient {
         'Content-Type': 'application/json',
         Authorization: this.configService.ckanConfig.authToken,
       },
-      body: JSON.stringify({
-        q: name,
-      }),
     });
 
-    if (response.ok) {
-      return (await response.json()) as CkanBaseResponse<CkanFindGroup[]>;
-    }
-    throw new Error(
-      `Unable to find group from CKAN - ${response.status}, ${
-        response.statusText
-      },  ${await response.text()}`,
-    );
+    return (await response.json()) as CkanBaseResponse<CkanGroup>;
   }
 
   /**
@@ -160,7 +151,11 @@ export class CkanService implements CkanClient {
 
     const formData = new FormData();
     Object.keys(rest).forEach((key) => {
-      formData.append(key, rest[key]);
+      console.log(key, rest[key], rest);
+      const value = rest[key];
+      if (notNil(value)) {
+        formData.append(key, value);
+      }
     });
     formData.append('upload', upload);
     return formData;

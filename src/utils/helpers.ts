@@ -8,6 +8,7 @@ import { MessagesProducerService } from '../core/messages/messages-producer.serv
 import { TaskScheduledMessage } from '../core/messages/types/message-types/task/types';
 import { CustomAttributes } from '../models/types/types';
 import { CkanExtra } from '../core/ckan/types/client';
+import { isNil } from '@nestjs/common/utils/shared.utils';
 
 type TestType =
   | string
@@ -116,12 +117,18 @@ export async function withTaskSchedulingErrorHandler<T>(
  * using . as delimiter
  */
 export function addCustomAttributesToExtras(
-  attributes: CustomAttributes,
+  attributes: CustomAttributes = {},
   extras: CkanExtra[],
   path = '',
 ) {
+  if (isNil(attributes) || Object.keys(attributes).length === 0) {
+    return;
+  }
   Object.keys(attributes).forEach((key) => {
     const value = attributes[key];
+    if (isNil(value)) {
+      return;
+    }
     if (typeof value === 'string') {
       extras.push({ key: `${path}${key}`, value });
     } else {

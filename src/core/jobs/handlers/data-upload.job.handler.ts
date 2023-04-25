@@ -1,7 +1,5 @@
 import { DataUploadJobType, JobHandler } from '../types/types';
 import { Job } from '@hokify/agenda';
-import { InjectModel } from '@nestjs/mongoose';
-import { CkanGroup, CkanGroupModel } from '../../../models/CkanGroup';
 import { CkanService } from '../../ckan/ckan.service';
 import { isNil } from '@nestjs/common/utils/shared.utils';
 import { Injectable, Logger } from '@nestjs/common';
@@ -12,6 +10,7 @@ import {
   tryStringify,
 } from '../../../utils/helpers';
 import { FileStorageService } from '../../file-storage/file-storage.service';
+import { notNil } from '../../../utils/validation';
 
 @Injectable()
 export class DataUploadJobHandler
@@ -20,8 +19,6 @@ export class DataUploadJobHandler
   private readonly logger = new Logger(DataUploadJobHandler.name);
 
   constructor(
-    @InjectModel(CkanGroup.name)
-    private readonly ckanGroupModel: CkanGroupModel,
     private readonly ckanClient: CkanService,
     private readonly fileStorageService: FileStorageService,
     private readonly configService: ApplicationConfigService,
@@ -40,7 +37,7 @@ export class DataUploadJobHandler
       );
 
       const fileMetadata = file.metadata;
-      const packageExtras: CkanExtra[] = [
+      let packageExtras: CkanExtra[] = [
         { key: 'ObjectID', value: fileMetadata.managedObjectId },
         { key: 'ObjectName', value: fileMetadata.managedObjectName },
         { key: 'DateFrom', value: fileMetadata.dateFrom },
@@ -53,10 +50,12 @@ export class DataUploadJobHandler
       ];
 
       addCustomAttributesToExtras(file.customAttributes, packageExtras);
+      packageExtras = packageExtras.filter((extra) => notNil(extra.value));
+
       const ckanPackageResponse = await this.ckanClient.createPackage({
         name: file.fileName,
         groups: [{ name: lowerCaseFragmentType }],
-        notes: file.metadata.description,
+        notes: file.metadata.fileDescription ?? file.metadata.sensorDescription,
         owner_org: ownerOrg,
         extras: packageExtras,
       });
@@ -73,9 +72,9 @@ export class DataUploadJobHandler
         file.storage.path,
       );
 
-      console.dir(ckanPackageResponse, { depth: 10 });
       const ckanResourceResponse = await this.ckanClient.createResource({
         name: file.fileName,
+        description: file.metadata.sensorDescription,
         package_id: ckanPackageResponse.result.id,
         upload: storedFileStream,
       });
@@ -104,7 +103,8 @@ export class DataUploadJobHandler
     groupDescription?: string,
   ): Promise<'GROUP_CREATED' | 'CREATION_NOT_NEEDED'> {
     const existingGroup = await this.ckanClient.findGroup(groupName);
-    if (isNil(existingGroup)) {
+
+    if (isNil(existingGroup?.result)) {
       const createdGroup = await this.ckanClient.createGroup({
         name: groupName,
         description: groupDescription,
@@ -119,6 +119,7 @@ export class DataUploadJobHandler
       );
       return 'GROUP_CREATED';
     }
+
     return 'CREATION_NOT_NEEDED';
   }
 }
