@@ -29,11 +29,11 @@ export class DataUploadJobHandler
     const jobPayload = jobData.payload;
     const ownerOrg = this.configService.ckanConfig.organisationId;
     for (const file of jobPayload.files) {
-      const lowerCaseFragmentType =
-        file.metadata.valueFragmentType.toLowerCase();
+      const lowerCaseFragmentDescription =
+        file.metadata.valueFragmentDescription.toLowerCase();
       await this.createGroupIfNeeded(
-        lowerCaseFragmentType,
-        file.metadata.valueFragmentDescription,
+        lowerCaseFragmentDescription,
+        file.metadata.valueFragmentType,
       );
 
       const fileMetadata = file.metadata;
@@ -42,9 +42,9 @@ export class DataUploadJobHandler
         { key: 'ObjectName', value: fileMetadata.managedObjectName },
         { key: 'DateFrom', value: fileMetadata.dateFrom },
         { key: 'DateTo', value: fileMetadata.dateTo },
-        { key: 'Value type', value: fileMetadata.valueFragmentType },
+        { key: 'Value Type', value: fileMetadata.valueFragmentType },
         {
-          key: 'Value identifier',
+          key: 'Value Description',
           value: fileMetadata.valueFragmentDescription,
         },
       ];
@@ -54,7 +54,7 @@ export class DataUploadJobHandler
 
       const ckanPackageResponse = await this.ckanClient.createPackage({
         name: file.fileName,
-        groups: [{ name: lowerCaseFragmentType }],
+        groups: [{ name: lowerCaseFragmentDescription }],
         notes: file.metadata.fileDescription ?? file.metadata.sensorDescription,
         owner_org: ownerOrg,
         extras: packageExtras,
@@ -89,7 +89,7 @@ export class DataUploadJobHandler
         );
       }
       this.logger.log(
-        `Uploaded file: ${file.fileName} - ${ckanResourceResponse.result.name} to CKAN using group: ${lowerCaseFragmentType}`,
+        `Uploaded file: ${file.fileName} - ${ckanResourceResponse.result.name} to CKAN using group: ${lowerCaseFragmentDescription}`,
       );
     }
   }

@@ -3,7 +3,7 @@ import { Agenda, Job } from '@hokify/agenda';
 import { Types } from 'mongoose';
 import { Filter, Sort } from 'mongodb';
 import { IJobParameters } from '@hokify/agenda/dist/types/JobParameters';
-import { isEmpty } from '@nestjs/common/utils/shared.utils';
+import { isEmpty, isNil } from '@nestjs/common/utils/shared.utils';
 import { ensureArray, notNil } from '../../utils/validation';
 import {
   DataFetchJobType,
@@ -161,6 +161,24 @@ export class JobsService implements OnModuleDestroy {
   ): Promise<Job<DataUploadJobType>> {
     const ckanCredentials = this.configService.ckanConfig;
     let platform: DataUploadJobPlatform;
+
+    const inCompleteFiles: string[] = [];
+    for (const file of jobInput.payload.files) {
+      if (
+        isNil(file.metadata.valueFragmentDescription) ||
+        file.metadata.valueFragmentDescription === ''
+      ) {
+        inCompleteFiles.push(file.fileName);
+      }
+    }
+
+    if (inCompleteFiles.length > 0) {
+      throw new Error(
+        `Unable to schedule file upload - valueFragmentDescription is missing for filenames: ${inCompleteFiles.join(
+          ' , ',
+        )}!`,
+      );
+    }
 
     switch (jobInput.payload.platform.platformIdentifier) {
       case Platform.CKAN:
