@@ -11,6 +11,9 @@ export interface JobHandler<T, R = unknown> {
 export interface IBaseJob<P = object> {
   remoteTaskId: string;
   initiatedByUser: string;
+  /**
+   * Task name
+   */
   label: string;
   payload: P;
 }

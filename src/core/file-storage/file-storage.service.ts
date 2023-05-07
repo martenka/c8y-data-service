@@ -1,10 +1,11 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { MinioService } from 'nestjs-minio-client';
 import { ensureArray } from '../../utils/validation';
-import { BucketItemCopy, ItemBucketMetadata, UploadedObjectInfo } from 'minio';
-import { IFileStorageInfoGenerator } from './types/types';
+import { BucketItemCopy } from 'minio';
+import { SaveFileToBucketOptions, SaveFileToBucketResult } from './types/types';
 import { ApplicationConfigService } from '../application-config/application-config.service';
 import * as buffer from 'buffer';
+import { unlink } from 'fs/promises';
 
 @Injectable()
 export class FileStorageService implements OnModuleInit {
@@ -25,13 +26,9 @@ export class FileStorageService implements OnModuleInit {
    * @param options.filePath - Local path to read the file from
    * @param options.metadata - Metadata about the file to be saved
    */
-  async saveFileToBucket(options: {
-    fileInfoGenerator: IFileStorageInfoGenerator;
-    bucketName: string;
-    objectName: string;
-    filePath: string;
-    metadata?: ItemBucketMetadata;
-  }): Promise<UploadedObjectInfo & { path: string; fileName: string }> {
+  async saveFileToBucket(
+    options: SaveFileToBucketOptions,
+  ): Promise<SaveFileToBucketResult> {
     const { fileInfoGenerator, objectName, filePath, bucketName, metadata } =
       options;
     const folderPath = fileInfoGenerator.getPath(
@@ -157,6 +154,10 @@ export class FileStorageService implements OnModuleInit {
     pathToSave: string,
   ) {
     await this.minioService.client.fGetObject(bucket, pathInBucket, pathToSave);
+  }
+
+  async deleteLocalFile(path: string) {
+    await unlink(path);
   }
 
   async onModuleInit(): Promise<void> {

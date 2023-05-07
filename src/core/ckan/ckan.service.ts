@@ -151,7 +151,6 @@ export class CkanService implements CkanClient {
 
     const formData = new FormData();
     Object.keys(rest).forEach((key) => {
-      console.log(key, rest[key], rest);
       const value = rest[key];
       if (notNil(value)) {
         formData.append(key, value);

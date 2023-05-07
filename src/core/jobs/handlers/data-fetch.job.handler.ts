@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { MessagesProducerService } from '../../messages/messages-producer.service';
 import { DataFetchJobResult, DataFetchJobType } from '../types/types';
 import { Job } from '@hokify/agenda';
 import { MeasurementDownloadService } from '../../cumulocity/measurement-download.service';
@@ -10,7 +9,6 @@ import { BasicAuth, Client, ICredentials } from '@c8y/client';
 import { awaitAllPromises, removeNilProperties } from '../../../utils/helpers';
 import { CSVWriter } from '../../cumulocity/filewriter/csv-writer';
 import path from 'path';
-import { unlink } from 'fs/promises';
 import { ApplicationConfigService } from '../../application-config/application-config.service';
 import { Types } from 'mongoose';
 import { notNil } from '../../../utils/validation';
@@ -25,7 +23,6 @@ import { GenericFileStorageInfoService } from '../../file-storage/file-storage-i
 export class DataFetchJobHandler {
   constructor(
     private readonly configService: ApplicationConfigService,
-    private readonly messageProducerService: MessagesProducerService,
     private readonly measurementDownloadService: MeasurementDownloadService,
     private readonly fileStorageInfoService: GenericFileStorageInfoService,
     private readonly filesService: FileStorageService,
@@ -135,7 +132,7 @@ export class DataFetchJobHandler {
         objectName: fetchedData.value.fileName,
       });
 
-      await unlink(pathToFile);
+      await this.filesService.deleteLocalFile(pathToFile);
 
       jobResultData.push({
         sensorId: job.attrs.data.payload.data[fetchedData.index].sensor.id,

@@ -39,6 +39,7 @@ export class JobsRunner {
 
     const messagePayload: DataFetchTaskResultStatusPayload = {
       sensors: result,
+      completedAt: new Date().toISOString(),
     };
 
     this.messageProducerService.sendTaskStatusMessage({

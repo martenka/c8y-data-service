@@ -32,6 +32,7 @@ export interface DataFetchTaskResultStatusPayload {
     dateFrom: string;
     dateTo: string;
   }[];
+  completedAt?: string;
 }
 
 export interface BaseManagedObject {
