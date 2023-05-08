@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { DataFetchJobResult, DataFetchJobType } from '../types/types';
 import { Job } from '@hokify/agenda';
 import { MeasurementDownloadService } from '../../cumulocity/measurement-download.service';
@@ -21,6 +21,7 @@ import { GenericFileStorageInfoService } from '../../file-storage/file-storage-i
 
 @Injectable()
 export class DataFetchJobHandler {
+  private readonly logger = new Logger(DataFetchJobHandler.name);
   constructor(
     private readonly configService: ApplicationConfigService,
     private readonly measurementDownloadService: MeasurementDownloadService,
@@ -46,6 +47,15 @@ export class DataFetchJobHandler {
 
     let dateFrom = jobData.payload.dateFrom;
     let dateTo = jobData.payload.dateTo;
+
+    if (
+      notNil(dateFrom) &&
+      notNil(dateTo) &&
+      isNil(jobData.payload.fromAndToDatesOriginallyPresent)
+    ) {
+      job.attrs.data.payload.fromAndToDatesOriginallyPresent = true;
+    }
+
     let fetchDurationSeconds = jobPeriodicData?.fetchDurationSeconds;
     const shouldSaveDateTimes =
       notNil(fetchDurationSeconds) && notNil(job.attrs.repeatInterval);
@@ -60,11 +70,18 @@ export class DataFetchJobHandler {
         notNil(dateTo) &&
         notNil(dateFrom)
       ) {
+        /* First try to calculate fetch duration using from and to dates
+         * */
         fetchDurationSeconds = Interval.fromDateTimes(
           DateTime.fromISO(dateFrom),
           DateTime.fromISO(dateTo),
         ).length('seconds');
       } else {
+        /**
+         * If from and to dates cannot be used immediately,
+         * try to use given cron or human-interval pattern
+         * to infer fetch duration
+         */
         const fetchDurationCandidate = this.getDurationSecondsFromPattern(
           job.attrs.repeatInterval,
         );
@@ -81,6 +98,9 @@ export class DataFetchJobHandler {
       }
     }
 
+    /**
+     * If begin date is missing, calculate it from ending date using previously calculated fetchDuration
+     */
     if (isNil(dateFrom)) {
       dateFrom = DateTime.fromISO(dateTo)
         .minus({
@@ -125,6 +145,7 @@ export class DataFetchJobHandler {
     for (const fetchedData of fetchedDataForAllSensors.fulfilled) {
       const pathToFile =
         fetchedData.value.localFilePath + path.sep + fetchedData.value.fileName;
+
       const savedFile = await this.filesService.saveFileToBucket({
         fileInfoGenerator: this.fileStorageInfoService,
         bucketName: this.configService.minioConfig.privateBucket,
@@ -151,8 +172,14 @@ export class DataFetchJobHandler {
         .plus({ second: fetchDurationSeconds })
         .toUTC()
         .toISO();
-      job.attrs.data.payload.periodicData.fetchDurationSeconds =
-        fetchDurationSeconds;
+
+      /* If both from and to dates are originally present then we don't want to save
+       * fetchDuration to recalculate it on every run based on dateFrom and dateTo
+       * */
+      if (!job.attrs.data.payload.fromAndToDatesOriginallyPresent) {
+        job.attrs.data.payload.periodicData.fetchDurationSeconds =
+          fetchDurationSeconds;
+      }
     }
     await job.save();
     return jobResultData;

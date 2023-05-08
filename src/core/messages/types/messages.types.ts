@@ -35,6 +35,10 @@ export interface TaskStatusMessage<P extends object = object> {
   taskId: string;
   taskType: string;
   status: TaskStatus;
+  /**
+   * The date when the status event happened
+   */
+  timestamp?: string;
   payload: P;
 }
 

@@ -25,6 +25,7 @@ export interface IJobOptions {
 }
 
 export interface IDataFetchJobPayload extends DataFetchTaskMessagePayload {
+  fromAndToDatesOriginallyPresent?: boolean;
   periodicData?: {
     fetchDurationSeconds: number;
   };
