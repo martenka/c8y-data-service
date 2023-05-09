@@ -182,8 +182,9 @@ describe('DataFetchJobHandler', () => {
           dateTo: '2023-04-05T12:00:00.000Z',
           dateFrom: '2023-04-03T12:00:00.000Z',
           periodicData: {
-            fetchDurationSeconds: 172800,
+            fetchDurationSeconds: 0,
           },
+          fromAndToDatesOriginallyPresent: true,
         }),
       });
     });
