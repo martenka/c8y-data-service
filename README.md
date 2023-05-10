@@ -1,73 +1,76 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
-
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+# C8y-Data-Service
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+This is the data service for data exporting and sharing solution based on [Cumulocity](https://cumulocity.com/guides/concepts/introduction/)
+The solution consists of three services: c8y-data-service(this), [c8y-core-service](https://github.com/martenka/c8y-core-service) and [c8y-admin](https://github.com/martenka/c8y-admin)
 
 ## Installation
 
 ```bash
-$ npm install
+$ yarn install
 ```
 
-## Running the app
+## Running the solution
 
+To run the whole solution, git clone  [c8y-data-service](https://github.com/martenka/c8y-data-service) and [c8y-admin](https://github.com/martenka/c8y-admin),  
+fill out necessary ENV variables and run the commands below. Dependencies (mongo, min.io, rabbitmq) will be run through  
+docker, services will run on the host machine.
+For that Node.js V18 or greater should be used (lower may work but have not been tested with).  
+You can use [nvm](https://github.com/nvm-sh/nvm) or [nvm-windows](https://github.com/coreybutler/nvm-windows) for easier Node.js version switching
+
+The order of starting the services should be:
+1. docker dependencies
+2. c8y-data-service
+3. c8y-core-service **Important:** Make sure data-service is running before starting core-service, otherwise the default user  
+   may not be synced to data-service
+4. c8y-admin
+
+### ENV variables
+Cumulocity account (that works with its API) is necessary for the solution to work.  
+Please contact the author on getting the credentials if necessary for testing purposes
+
+Before running the service, copy .env file from env folder to root path of this service and fill out the blank fields.  
+
+CKAN__AUTH_TOKEN - This is to upload files to CKAN. This has to be created by the user by logging into CKAN, going to "View Profile"  -> "API Tokens", then generating a key
+and putting the value into CKAN__AUTH_TOKEN variable.
+
+CKAN__ORGANISATION_ID - Organisation under where to upload new files. First a new organisation has to be created from CKAN  
+and then the ORGANISATION_ID has to be fetched via CKAN API.
+
+Example request:
 ```bash
-# development
-$ npm run start
+# CKAN One Organisation
+$ curl --location 'https://localhost:8443/api/3/action/organization_show?id=test' \
+--header 'Authorization: [YOUR_TOKEN]'
+```
 
-# watch mode
-$ npm run start:dev
+More complete CKAN API documentation is available [here](https://docs.ckan.org/en/2.9/api/#action-api-reference)
 
-# production mode
-$ npm run start:prod
+Other values don't have to be changed for **testing** purposes.
+
+## Commands
+```bash
+# Databases
+$ yarn docker:start #This has to be run in c8y-core-service
+
+# Service in watch mode
+$ yarn start:dev
+
+# Production mode
+$ yarn build && yarn start:prod
 ```
 
 ## Test
 
 ```bash
-# unit tests
-$ npm run test
+# Tests
+$ yarn test
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+# Tests with coverage
+$ yarn test:cov
 ```
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
 
 ## License
 
-Nest is [MIT licensed](LICENSE).
+[MIT license](LICENSE).

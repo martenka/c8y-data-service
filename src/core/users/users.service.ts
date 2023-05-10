@@ -32,7 +32,7 @@ export class UsersService {
       .exec();
 
     const createdUserId = result?.toObject()._id;
-    this.logger.log(`Created user with id: ${createdUserId}`);
+    this.logger.log(`Created or updated user with id: ${createdUserId}`);
     return result;
   }
 
