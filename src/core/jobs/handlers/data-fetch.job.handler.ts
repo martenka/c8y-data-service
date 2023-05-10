@@ -6,7 +6,11 @@ import { FileStorageService } from '../../file-storage/file-storage.service';
 import { InjectLocalDataDownloadFolder } from '../../../../decorators/injectors';
 import { UsersService } from '../../users/users.service';
 import { BasicAuth, Client, ICredentials } from '@c8y/client';
-import { awaitAllPromises, removeNilProperties } from '../../../utils/helpers';
+import {
+  awaitAllPromises,
+  nullToUndefined,
+  removeNilProperties,
+} from '../../../utils/helpers';
 import { CSVWriter } from '../../cumulocity/filewriter/csv-writer';
 import path from 'path';
 import { ApplicationConfigService } from '../../application-config/application-config.service';
@@ -155,8 +159,10 @@ export class DataFetchJobHandler {
 
       await this.filesService.deleteLocalFile(pathToFile);
 
+      const payloadDataEntity = job.attrs.data.payload.data[fetchedData.index];
       jobResultData.push({
-        sensorId: job.attrs.data.payload.data[fetchedData.index].sensor.id,
+        sensorId: payloadDataEntity.sensor.id,
+        dataId: nullToUndefined(payloadDataEntity.dataId),
         filePath: savedFile.path,
         bucket: this.configService.minioConfig.privateBucket,
         isPublicBucket: false,
@@ -181,6 +187,10 @@ export class DataFetchJobHandler {
           fetchDurationSeconds;
       }
     }
+    job.attrs.data.payload.data.forEach((item) => {
+      item.dataId = undefined;
+    });
+
     await job.save();
     return jobResultData;
   }

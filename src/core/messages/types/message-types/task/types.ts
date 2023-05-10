@@ -12,6 +12,7 @@ export interface DataFetchTaskMessagePayload {
   dateTo?: string;
   data: {
     fileName?: string;
+    dataId?: string;
     sensor: {
       id: string;
       managedObjectId: number;
@@ -25,6 +26,7 @@ export interface DataFetchTaskResultStatusPayload {
   sensors: {
     sensorId: string;
     bucket: string;
+    dataId?: string;
     isPublicBucket: boolean;
     filePath?: string;
     fileURL?: string;

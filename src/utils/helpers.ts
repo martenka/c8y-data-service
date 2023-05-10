@@ -152,3 +152,8 @@ export function tryStringify(value: unknown): string | undefined {
     return undefined;
   }
 }
+
+export function nullToUndefined<T>(value: T | null) {
+  if (value === null) return undefined;
+  return value;
+}

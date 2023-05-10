@@ -6,6 +6,7 @@ import { SaveFileToBucketOptions, SaveFileToBucketResult } from './types/types';
 import { ApplicationConfigService } from '../application-config/application-config.service';
 import * as buffer from 'buffer';
 import { unlink } from 'fs/promises';
+import { BucketPolicies } from './policies';
 
 @Injectable()
 export class FileStorageService implements OnModuleInit {
@@ -161,14 +162,22 @@ export class FileStorageService implements OnModuleInit {
   }
 
   async onModuleInit(): Promise<void> {
+    this.logger.log(
+      'Making sure Minio buckets exist and that they have correct policies',
+    );
     await this.minioService.client.makeBucket(
       this.configService.minioConfig.publicBucket,
       'eu-central-1',
+    );
+    await this.minioService.client.setBucketPolicy(
+      this.configService.minioConfig.publicBucket,
+      BucketPolicies.READ_PUBLIC,
     );
 
     await this.minioService.client.makeBucket(
       this.configService.minioConfig.privateBucket,
       'eu-central-1',
     );
+    this.logger.log('Minio bucket policies verified');
   }
 }
