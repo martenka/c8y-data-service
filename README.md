@@ -11,10 +11,11 @@ The solution consists of three services: c8y-data-service(this), [c8y-core-servi
 $ yarn install
 ```
 
-## Running the solution
+## Running all services
 
+Currently, all services run on the local machine.  
 To run the whole solution, git clone  [c8y-data-service](https://github.com/martenka/c8y-data-service) and [c8y-admin](https://github.com/martenka/c8y-admin),  
-fill out necessary ENV variables and run the commands below. Dependencies (mongo, min.io, rabbitmq) will be run through  
+fill out necessary ENV variables and run the commands specified in each service. Dependencies (mongo, min.io, rabbitmq) will be run through  
 docker, services will run on the host machine.
 For that Node.js V18 or greater should be used (lower may work but have not been tested with).  
 You can use [nvm](https://github.com/nvm-sh/nvm) or [nvm-windows](https://github.com/coreybutler/nvm-windows) for easier Node.js version switching
@@ -22,9 +23,11 @@ You can use [nvm](https://github.com/nvm-sh/nvm) or [nvm-windows](https://github
 The order of starting the services should be:
 1. docker dependencies
 2. c8y-data-service
-3. c8y-core-service **Important:** Make sure data-service is running before starting core-service, otherwise the default user  
-   may not be synced to data-service
+3. c8y-core-service **Important:** For first run make sure data-service is running before starting core-service, otherwise the default user  
+   is not synced to data-service.
 4. c8y-admin
+
+## Running this service
 
 ### ENV variables
 Cumulocity account (that works with its API) is necessary for the solution to work.  
@@ -50,18 +53,16 @@ More complete CKAN API documentation is available [here](https://docs.ckan.org/e
 Other values don't have to be changed for **testing** purposes.
 
 ## Commands
+This assumes that docker dependencies are already running (started from c8y-core-service)
 ```bash
-# Databases
-$ yarn docker:start #This has to be run in c8y-core-service
-
-# Service in watch mode
+# Start service in watch mode OR
 $ yarn start:dev
 
 # Production mode
 $ yarn build && yarn start:prod
 ```
 
-## Test
+## Testing
 
 ```bash
 # Tests
@@ -73,4 +74,4 @@ $ yarn test:cov
 
 ## License
 
-[MIT license](LICENSE).
+[MIT license](LICENSE.md).
