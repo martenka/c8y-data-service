@@ -15,6 +15,7 @@ import {
   DataUploadJobType,
   DataUploadJobData,
   DataUploadJobPlatform,
+  TaskModeChangeResult,
 } from './types/types';
 import { JobNotFoundError } from './errors/job-not-found.error';
 import {
@@ -26,6 +27,7 @@ import { TaskTypes } from '../messages/types/messages.types';
 import { FileVisibilityStateMessage } from '../messages/types/message-types/file/type';
 import { ApplicationConfigService } from '../application-config/application-config.service';
 import { Platform } from '../../global/tokens';
+import { awaitAllPromises } from '../../utils/helpers';
 
 @Injectable()
 export class JobsService implements OnModuleDestroy {
@@ -222,6 +224,49 @@ export class JobsService implements OnModuleDestroy {
         { 'data.label': { $in: ensureArray(filter.labels) } },
       ],
     } as Filter<IJobParameters>);
+  }
+
+  /**
+   * Disables (stops from being scheduled again) jobs based on system task ids
+   */
+  async setDisabledStatus(
+    jobs: { taskId: string; disabled: boolean }[],
+  ): Promise<TaskModeChangeResult[]> {
+    const jobsToDisableTaskIds: string[] = [];
+    const jobsToEnableTaskIds: string[] = [];
+
+    jobs.forEach((job) => {
+      if (job.disabled) {
+        jobsToDisableTaskIds.push(job.taskId);
+      } else {
+        jobsToEnableTaskIds.push(job.taskId);
+      }
+    });
+
+    const jobsToDisable = await this.agenda.jobs({
+      'data.remoteTaskId': {
+        $in: jobsToDisableTaskIds,
+      },
+    });
+
+    const jobsToEnable = await this.agenda.jobs({
+      'data.remoteTaskId': {
+        $in: jobsToEnableTaskIds,
+      },
+    });
+
+    await awaitAllPromises(jobsToDisable.map((job) => job.disable().save()));
+    await awaitAllPromises(jobsToEnable.map((job) => job.enable().save()));
+
+    const allJobs = jobsToEnable.concat(jobsToDisable);
+    return allJobs
+      .map(
+        (job): TaskModeChangeResult => ({
+          taskId: job.attrs.data?.['remoteTaskId'],
+          taskType: job.attrs.name,
+        }),
+      )
+      .filter(notNil);
   }
 
   private async scheduleJob<T extends TaskScheduledMessage, P extends IBaseJob>(

@@ -64,3 +64,8 @@ export type DataUploadJobData = Pick<DataUploadTaskMessagePayload, 'files'> & {
 
 export type DataUploadJobPlatform = Pick<DataUploadJobData, 'platform'>;
 export type DataUploadJobType = IBaseJob<DataUploadJobData>;
+
+export interface TaskModeChangeResult {
+  taskId: string;
+  taskType: string;
+}

@@ -8,6 +8,7 @@ import {
   FileVisibilityStateMessage,
   VisibilityStateResultMessage,
 } from './message-types/file/type';
+import { TaskModeMessage } from './message-types/task/mode';
 
 export enum TaskSteps {
   NOT_STARTED = 'NOT_STARTED',
@@ -15,6 +16,12 @@ export enum TaskSteps {
   PROCESSING = 'PROCESSING',
   DONE = 'DONE',
   FAILED = 'FAILED',
+  DISABLED = 'DISABLED',
+}
+
+export enum TaskModes {
+  ENABLED = 'ENABLED',
+  DISABLED = 'DISABLED',
 }
 
 export enum TaskTypes {
@@ -48,6 +55,8 @@ export interface MessagesTypes {
   'task.scheduled': TaskScheduledMessage;
   'task.status.failed': TaskFailedMessage;
   'task.status': TaskStatusMessage;
+  'task.mode': TaskModeMessage;
+  'task.mode.changed': TaskModeMessage;
   'user.user': UserMessage;
   'file.status.deletion': FileDeletionMessage;
   'file.status.visibility.state': FileVisibilityStateMessage;

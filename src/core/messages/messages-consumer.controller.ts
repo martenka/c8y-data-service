@@ -98,4 +98,20 @@ export class MessagesController {
         );
     }
   }
+
+  @RabbitSubscribe({
+    exchange: ExchangeTypes.GENERAL,
+    queue: 'dataservice.tasks.mode',
+    routingKey: 'task.mode',
+    createQueueIfNotExists: true,
+    allowNonJsonMessages: true,
+    errorHandler: (channel, msg, error) => {
+      console.error(error);
+    },
+  })
+  async consumeTaskModeMessage(payload: object) {
+    await this.messagesHandlerService.handleTaskModeMessage(
+      payload as MessagesTypes['task.mode'],
+    );
+  }
 }

@@ -32,6 +32,10 @@ export class MessagesProducerService {
     this.sendMessage(ExchangeTypes.GENERAL, 'task.status.failed', message);
   }
 
+  sendTaskModeMessage(message: MessagesTypes['task.mode.changed']) {
+    this.sendMessage(ExchangeTypes.GENERAL, 'task.mode.changed', message);
+  }
+
   sendFileVisibilityResultMessage(
     message: MessagesTypes['file.result.visibility.state'],
   ) {

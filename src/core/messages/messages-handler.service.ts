@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { MessagesTypes, TaskTypes } from './types/messages.types';
+import { MessagesTypes, TaskModes, TaskTypes } from './types/messages.types';
 import { MessagesProducerService } from './messages-producer.service';
 
 import { idToObjectID } from '../../utils/helpers';
@@ -107,5 +107,45 @@ export class MessagesHandlerService {
     message: MessagesTypes['file.status.visibility.state'],
   ): Promise<void> {
     await this.jobsService.scheduleVisibilityStateChangeJob(message);
+  }
+
+  async handleTaskModeMessage(
+    message: MessagesTypes['task.mode'],
+  ): Promise<void> {
+    switch (message.type) {
+      case TaskModes.DISABLED:
+        const disabledTasks = await this.jobsService.setDisabledStatus(
+          message.tasks.map((task) => ({
+            taskId: task.taskId,
+            disabled: true,
+          })),
+        );
+
+        this.messagesProducerService.sendTaskModeMessage({
+          type: TaskModes.DISABLED,
+          tasks: disabledTasks.map((task) => ({ taskId: task.taskId })),
+        });
+
+        this.logger.log(
+          `Disabled tasks: ${disabledTasks.map((task) => task.taskId)}`,
+        );
+        break;
+      case TaskModes.ENABLED:
+        const enabledTasks = await this.jobsService.setDisabledStatus(
+          message.tasks.map((task) => ({
+            taskId: task.taskId,
+            disabled: false,
+          })),
+        );
+        this.messagesProducerService.sendTaskModeMessage({
+          type: TaskModes.ENABLED,
+          tasks: enabledTasks.map((task) => ({ taskId: task.taskId })),
+        });
+
+        this.logger.log(
+          `Enabled tasks: ${enabledTasks.map((task) => task.taskId)}`,
+        );
+        break;
+    }
   }
 }
