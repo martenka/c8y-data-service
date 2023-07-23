@@ -1,11 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { closeDB, fakeTime } from '../../../utils/tests';
-import { Types } from 'mongoose';
-import {
-  getTestDB,
-  initiateAgenda,
-  TestDB,
-} from '../../../../test/global/test-db';
+import { fakeTime, initiateAgenda } from '../../../utils/tests';
+import { Connection, Types } from 'mongoose';
 import { Agenda, Job } from '@hokify/agenda';
 import { DataFetchJobHandler } from '../handlers/data-fetch.job.handler';
 import { Client } from '@c8y/client';
@@ -35,158 +30,178 @@ import { DataFetchJobType } from '../types/types';
 import { CSVWriter } from '../../cumulocity/filewriter/csv-writer';
 import { Logger } from '@nestjs/common';
 import { DateTime, Duration } from 'luxon';
-describe('DataFetchJobHandler', () => {
-  let service: DataFetchJobHandler;
-  let db: TestDB;
-  let agenda: Agenda;
+import {
+  setupTest,
+  WithServiceSetupTestResult,
+} from '../../../../test/setup/setup';
 
-  const mockConfigService = {
-    minioConfig: {
-      privateBucket: 'test-private-bucket',
-      publicBucket: 'test-public-bucket',
-      dataFolder: 'test-data',
-    },
+type DataFetchJobHandlerExtension = WithServiceSetupTestResult<{
+  services: {
+    agenda: Agenda;
+    service: DataFetchJobHandler;
   };
-  const mockMeasurementDownloadService =
-    createMock<C8yFetcher<C8yData, unknown>>();
-  mockMeasurementDownloadService.fetchData.mockImplementation(
-    async <T extends C8yData, V = unknown>(
-      _client: Client,
-      _query: C8yQueryParams<T>,
-      _options?: C8yFetchOptions,
-      _fileWriter?: FileWriter<T>,
-      _pageResultHandler?: (page: V[]) => Promise<void>,
-    ): Promise<FetchedData<V>> => {
-      return {
-        data: [],
-        localFilePath: 'testPath',
-        fileName: 'testFilename',
-      };
-    },
-  );
+}>;
 
-  const mockFileService = createMock<FileStorageService>();
-  mockFileService.saveFileToBucket.mockImplementation(
-    async (
-      options: SaveFileToBucketOptions,
-    ): Promise<SaveFileToBucketResult> => {
-      return {
-        fileName: options.objectName,
-        path: options.filePath,
-        etag: '123',
-        versionId: '1',
-      };
-    },
-  );
-  mockFileService.deleteLocalFile.mockImplementation((_path: string) =>
-    Promise.resolve(),
-  );
-  jest
-    .spyOn(Writer, 'CSVWriter')
-    .mockImplementation(<T extends C8yData>() => ({} as CSVWriter<T>));
-  const mockUsersService = createMock<UsersService>();
-  mockUsersService.getUserCredentials.mockImplementation(
-    async (_id: Types.ObjectId): Promise<C8yCredentialsType | undefined> => {
-      return {
-        username: 'test-user',
-        password: 'test-pass',
-        tenantID: 'test-tenant',
-        baseAddress: 'http://localhost/',
-      };
-    },
-  );
+describe('DataFetchJobHandler', () => {
+  const now = new Date('2023-05-02T12:00:00.000Z');
 
-  beforeAll(async () => {
-    db = await getTestDB();
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        { provide: ApplicationConfigService, useValue: mockConfigService },
-        {
-          provide: GenericFileStorageInfoService,
-          useClass: GenericFileStorageInfoService,
+  function withTest(
+    callback: (params: DataFetchJobHandlerExtension) => Promise<void>,
+  ): () => Promise<void> {
+    async function setupFn(
+      connection: Connection,
+    ): Promise<DataFetchJobHandlerExtension> {
+      const mockConfigService = {
+        minioConfig: {
+          privateBucket: 'test-private-bucket',
+          publicBucket: 'test-public-bucket',
+          dataFolder: 'test-data',
         },
-        {
-          provide: MeasurementDownloadService,
-          useValue: mockMeasurementDownloadService,
+      };
+      const mockMeasurementDownloadService =
+        createMock<C8yFetcher<C8yData, unknown>>();
+      mockMeasurementDownloadService.fetchData.mockImplementation(
+        async <T extends C8yData, V = unknown>(
+          _client: Client,
+          _query: C8yQueryParams<T>,
+          _options?: C8yFetchOptions,
+          _fileWriter?: FileWriter<T>,
+          _pageResultHandler?: (page: V[]) => Promise<void>,
+        ): Promise<FetchedData<V>> => {
+          return {
+            data: [],
+            localFilePath: 'testPath',
+            fileName: 'testFilename',
+          };
         },
-        { provide: FileStorageService, useValue: mockFileService },
-        { provide: UsersService, useValue: mockUsersService },
-        { provide: LOCAL_DATA_DOWNLOAD_FOLDER, useValue: 'downloads' },
-        DataFetchJobHandler,
-      ],
-    })
-      .setLogger(new Logger())
-      .compile();
+      );
 
-    service = module.get<DataFetchJobHandler>(DataFetchJobHandler);
+      const mockFileService = createMock<FileStorageService>();
+      mockFileService.saveFileToBucket.mockImplementation(
+        async (
+          options: SaveFileToBucketOptions,
+        ): Promise<SaveFileToBucketResult> => {
+          return {
+            fileName: options.objectName,
+            path: options.filePath,
+            etag: '123',
+            versionId: '1',
+          };
+        },
+      );
+      mockFileService.deleteLocalFile.mockImplementation((_path: string) =>
+        Promise.resolve(),
+      );
+      jest
+        .spyOn(Writer, 'CSVWriter')
+        .mockImplementation(<T extends C8yData>() => ({} as CSVWriter<T>));
+      const mockUsersService = createMock<UsersService>();
+      mockUsersService.getUserCredentials.mockImplementation(
+        async (
+          _id: Types.ObjectId,
+        ): Promise<C8yCredentialsType | undefined> => {
+          return {
+            username: 'test-user',
+            password: 'test-pass',
+            tenantID: 'test-tenant',
+            baseAddress: 'http://localhost/',
+          };
+        },
+      );
+
+      const agenda = await initiateAgenda(connection);
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          { provide: ApplicationConfigService, useValue: mockConfigService },
+          {
+            provide: GenericFileStorageInfoService,
+            useClass: GenericFileStorageInfoService,
+          },
+          {
+            provide: MeasurementDownloadService,
+            useValue: mockMeasurementDownloadService,
+          },
+          { provide: FileStorageService, useValue: mockFileService },
+          { provide: UsersService, useValue: mockUsersService },
+          { provide: LOCAL_DATA_DOWNLOAD_FOLDER, useValue: 'downloads' },
+          DataFetchJobHandler,
+        ],
+      })
+        .setLogger(new Logger())
+        .compile();
+
+      const service = module.get<DataFetchJobHandler>(DataFetchJobHandler);
+
+      return {
+        services: {
+          agenda,
+          service,
+        },
+      };
+    }
+
+    return setupTest<DataFetchJobHandlerExtension>(setupFn, callback);
+  }
+
+  beforeEach(() => {
+    fakeTime({ now, fake: ['Date'] });
   });
-
-  beforeEach(async () => {
-    agenda = await initiateAgenda(db.connection);
-  });
-
-  afterEach(async () => {
-    jest.useRealTimers();
-    await agenda.db.removeJobs({});
-    await agenda.stop();
-  });
-
-  afterAll(closeDB(db));
+  afterEach(jest.useRealTimers);
 
   describe('calculates new dates for periodic job', () => {
-    it('when from and to are present', async () => {
-      const now = new Date('2023-05-02T12:00:00.000Z');
-      fakeTime({ now, fake: ['Date'] });
-
-      const job = (await agenda
-        .create<DataFetchJobType>('test', {
-          remoteTaskId: '6457bd33cc892d18243c950b',
-          initiatedByUser: '6457bd3e0c8f5f4e11154b0b',
-          label: 'Test data-fetch task',
-          payload: {
-            dateTo: '2023-04-03T12:00:00.000Z',
-            dateFrom: '2023-04-01T12:00:00.000Z',
-            data: [
-              {
-                fileName: 'test-filename',
-                sensor: {
-                  id: '6457bdc89c2e95661e3c8125',
-                  fragmentType: 'type1',
-                  managedObjectId: 100,
+    it(
+      'when from and to are present',
+      withTest(async ({ services }) => {
+        const job = (await services.agenda
+          .create<DataFetchJobType>('test', {
+            remoteTaskId: '6457bd33cc892d18243c950b',
+            initiatedByUser: '6457bd3e0c8f5f4e11154b0b',
+            label: 'Test data-fetch task',
+            payload: {
+              dateTo: '2023-04-03T12:00:00.000Z',
+              dateFrom: '2023-04-01T12:00:00.000Z',
+              data: [
+                {
+                  fileName: 'test-filename',
+                  sensor: {
+                    id: '6457bdc89c2e95661e3c8125',
+                    fragmentType: 'type1',
+                    managedObjectId: 100,
+                  },
                 },
+              ],
+              periodicData: {
+                fetchDurationSeconds: 0,
               },
-            ],
+            },
+          })
+          .repeatEvery('0 */5 * * * *') // Every 5 minutes
+          .save()) as Job<DataFetchJobType>;
+
+        await services.service.handle(job);
+
+        const jobs = await services.agenda.jobs({ name: 'test' });
+        const testJob = jobs[0];
+
+        expect(testJob.attrs.name).toEqual('test');
+        expect(testJob.attrs.nextRunAt).toEqual(
+          DateTime.fromJSDate(now)
+            .plus(Duration.fromMillis(5000 * 60))
+            .toJSDate(),
+        );
+        expect(testJob.attrs.data).toMatchObject({
+          remoteTaskId: new Types.ObjectId('6457bd33cc892d18243c950b'),
+          label: 'Test data-fetch task',
+          payload: expect.objectContaining({
+            dateTo: '2023-04-05T12:00:00.000Z',
+            dateFrom: '2023-04-03T12:00:00.000Z',
             periodicData: {
               fetchDurationSeconds: 0,
             },
-          },
-        })
-        .repeatEvery('0 */5 * * * *') // Every 5 minutes
-        .save()) as Job<DataFetchJobType>;
-
-      await service.handle(job);
-
-      const jobs = await agenda.jobs({ name: 'test' });
-      const testJob = jobs[0];
-
-      expect(testJob.attrs.name).toEqual('test');
-      expect(testJob.attrs.nextRunAt).toEqual(
-        DateTime.fromJSDate(now)
-          .plus(Duration.fromMillis(5000 * 60))
-          .toJSDate(),
-      );
-      expect(testJob.attrs.data).toMatchObject({
-        remoteTaskId: new Types.ObjectId('6457bd33cc892d18243c950b'),
-        label: 'Test data-fetch task',
-        payload: expect.objectContaining({
-          dateTo: '2023-04-05T12:00:00.000Z',
-          dateFrom: '2023-04-03T12:00:00.000Z',
-          periodicData: {
-            fetchDurationSeconds: 0,
-          },
-          fromAndToDatesOriginallyPresent: true,
-        }),
-      });
-    });
+            fromAndToDatesOriginallyPresent: true,
+          }),
+        });
+      }),
+    );
   });
 });

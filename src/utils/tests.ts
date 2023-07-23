@@ -1,10 +1,5 @@
-import { TestDB } from '../../test/global/test-db';
-
-export function closeDB(testDB: TestDB): () => Promise<unknown> {
-  return async function () {
-    await testDB?.close();
-  };
-}
+import { Connection } from 'mongoose';
+import { Agenda } from '@hokify/agenda';
 
 /**
  * Adds `fake` option to `jest.useFakeTimers` config api
@@ -46,4 +41,24 @@ export function fakeTime(config?: FakeTimersConfig & { fake?: FakeableAPI[] }) {
   }
 
   return jest.useFakeTimers(config);
+}
+
+export async function initiateAgenda(connection: Connection): Promise<Agenda> {
+  const agenda: Agenda = await new Promise((resolve) => {
+    const agenda = new Agenda({
+      // Mongoose uses higher version of mongodb client than agenda, their types don't match exactly
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      mongo: connection.getClient().db(),
+      processEvery: '1 second',
+    });
+
+    agenda.on('ready', () => resolve(agenda));
+  });
+
+  if (agenda) {
+    await agenda.db.removeJobs({});
+  }
+
+  return agenda;
 }
