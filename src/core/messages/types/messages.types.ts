@@ -13,13 +13,14 @@ import { TaskModeMessage } from './message-types/task/mode';
 export enum TaskSteps {
   NOT_STARTED = 'NOT_STARTED',
   IN_QUEUE = 'IN_QUEUE',
+  WAITING_NEXT_CYCLE = 'WAITING_NEXT_CYCLE',
   PROCESSING = 'PROCESSING',
   DONE = 'DONE',
   FAILED = 'FAILED',
   DISABLED = 'DISABLED',
 }
 
-export enum TaskModes {
+export enum TaskMode {
   ENABLED = 'ENABLED',
   DISABLED = 'DISABLED',
 }
@@ -42,10 +43,12 @@ export interface TaskStatusMessage<P extends object = object> {
   taskId: string;
   taskType: string;
   status: TaskStatus;
+  mode?: TaskMode;
   /**
    * The date when the status event happened
    */
   timestamp?: string;
+  nextRunAt?: string;
   payload: P;
 }
 

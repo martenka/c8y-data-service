@@ -111,8 +111,10 @@ export class JobsService implements OnModuleDestroy {
     isPeriodic = false,
   ): Promise<Job<DataFetchJobType>> {
     const jobPayload: IDataFetchJobPayload = {
-      dateFrom: jobInput.payload.dateFrom,
-      dateTo: jobInput.payload.dateTo,
+      originalDateFrom: jobInput.payload.dateFrom,
+      originalDateTo: jobInput.payload.dateTo,
+      currentDateFrom: jobInput.payload.dateFrom,
+      currentDateTo: jobInput.payload.dateTo,
       data: ensureArray(jobInput.payload.data),
     };
 
@@ -120,7 +122,7 @@ export class JobsService implements OnModuleDestroy {
 
     if (isPeriodic) {
       jobData.payload.periodicData = {
-        fetchDurationSeconds: jobInput.periodicData.fetchDurationSeconds,
+        windowDurationSeconds: jobInput.periodicData.windowDurationSeconds,
       };
     }
 

@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DefineJob } from 'nestjs-agenda-plus';
 import { Job } from '@hokify/agenda';
-import { TaskSteps, TaskTypes } from '../../messages/types/messages.types';
+import {
+  TaskMode,
+  TaskSteps,
+  TaskTypes,
+} from '../../messages/types/messages.types';
 import {
   DataFetchJobType,
   DataUploadJobType,
@@ -10,7 +14,10 @@ import {
   VisibilityStateChangeJobType,
 } from '../types/types';
 import { MessagesProducerService } from '../../messages/messages-producer.service';
-import { DataFetchJobHandler } from '../handlers/data-fetch.job.handler';
+import {
+  DataFetchJobHandler,
+  dataFetchJobStatusToTaskSteps,
+} from '../handlers/data-fetch.job.handler';
 import {
   DataFetchTaskResultStatusPayload,
   ObjectSyncTaskResultPayload,
@@ -18,6 +25,7 @@ import {
 import { ObjectSyncJobHandler } from '../handlers/object-sync.job.handler';
 import { VisibilityStateChangeJobHandler } from '../handlers/visibilitystate-change-job.handler';
 import { DataUploadJobHandler } from '../handlers/data-upload.job.handler';
+import { isNil } from '@nestjs/common/utils/shared.utils';
 
 @Injectable()
 export class JobsRunner {
@@ -33,23 +41,36 @@ export class JobsRunner {
 
   @DefineJob(TaskTypes.DATA_FETCH)
   async runDataFetchJob(job: Job<DataFetchJobType>) {
-    const result = await this.withTaskStatusHandler(job, () =>
-      this.dataFetchJobHandler.handle(job),
-    );
+    const result = await this.withTaskStatusHandler(job, async () => {
+      const jobResult = await this.dataFetchJobHandler.handle(job);
 
-    const messagePayload: DataFetchTaskResultStatusPayload = {
-      sensors: result,
-      completedAt: new Date().toISOString(),
-    };
+      let messagePayload: DataFetchTaskResultStatusPayload | object = {};
+      const taskStatus: TaskSteps = dataFetchJobStatusToTaskSteps(
+        jobResult.status,
+      );
+      if (!isNil(jobResult.result)) {
+        messagePayload = {
+          sensors: jobResult.result,
+          completedAt: new Date().toISOString(),
+        };
+      }
 
-    this.messageProducerService.sendTaskStatusMessage({
-      taskId: job.attrs.data.remoteTaskId,
-      status: TaskSteps.DONE,
-      taskType: job.attrs.name,
-      payload: messagePayload,
+      this.messageProducerService.sendTaskStatusMessage({
+        taskId: job.attrs.data.remoteTaskId,
+        status: taskStatus,
+        mode: this.getMode(job),
+        taskType: job.attrs.name,
+        nextRunAt: job.attrs.nextRunAt?.toISOString(),
+        payload: messagePayload,
+      });
+
+      return jobResult;
     });
+
     this.logger.log(
-      `Job ${job.attrs.name} ${job.attrs._id?.toString()} finished`,
+      `Job ${
+        job.attrs.name
+      } ${job.attrs._id?.toString()} finished with status: ${result.status}`,
     );
   }
 
@@ -62,7 +83,9 @@ export class JobsRunner {
       {
         taskId: job.attrs.data.remoteTaskId,
         status: TaskSteps.DONE,
+        mode: this.getMode(job),
         taskType: job.attrs.name,
+        nextRunAt: job.attrs.nextRunAt?.toISOString(),
         payload: { objectAmount: result },
       },
     );
@@ -112,6 +135,7 @@ export class JobsRunner {
     this.messageProducerService.sendTaskStatusMessage({
       taskId: job.attrs.data.remoteTaskId,
       status: TaskSteps.DONE,
+      mode: this.getMode(job),
       taskType: job.attrs.name,
       payload: {},
     });
@@ -135,6 +159,7 @@ export class JobsRunner {
         status: TaskSteps.PROCESSING,
         taskId: job.attrs.data.remoteTaskId,
         taskType: job.attrs.name,
+        mode: this.getMode(job),
         payload: {},
       });
       return await handler();
@@ -148,12 +173,24 @@ export class JobsRunner {
         status: TaskSteps.FAILED,
         taskId: job.attrs.data.remoteTaskId,
         taskType: job.attrs.name,
+        mode: this.getMode(job),
         payload: {
           reason: reason || 'Reason was not present on error object',
         },
       });
 
       throw e;
+    }
+  }
+
+  private getMode(job: Job): TaskMode | undefined {
+    switch (job.attrs.disabled) {
+      case true:
+        return TaskMode.DISABLED;
+      case false:
+        return TaskMode.ENABLED;
+      default:
+        return undefined;
     }
   }
 }

@@ -71,7 +71,7 @@ export interface TaskScheduledMessage<P extends object = object> {
   firstRunAt?: string;
   periodicData?: {
     pattern: string;
-    fetchDurationSeconds: number;
+    windowDurationSeconds?: number;
   };
   payload: P;
 }

@@ -26,14 +26,18 @@ import { GenericFileStorageInfoService } from '../../file-storage/file-storage-i
 import { ApplicationConfigService } from '../../application-config/application-config.service';
 import { MeasurementDownloadService } from '../../cumulocity/measurement-download.service';
 import { LOCAL_DATA_DOWNLOAD_FOLDER } from '../../../global/tokens';
-import { DataFetchJobType } from '../types/types';
+import { DataFetchJobStatus, DataFetchJobType } from '../types/types';
 import { CSVWriter } from '../../cumulocity/filewriter/csv-writer';
 import { Logger } from '@nestjs/common';
-import { DateTime, Duration } from 'luxon';
+
 import {
   setupTest,
   WithServiceSetupTestResult,
 } from '../../../../test/setup/setup';
+
+interface WithTestOptions {
+  fakeNow?: Date;
+}
 
 type DataFetchJobHandlerExtension = WithServiceSetupTestResult<{
   services: {
@@ -43,10 +47,9 @@ type DataFetchJobHandlerExtension = WithServiceSetupTestResult<{
 }>;
 
 describe('DataFetchJobHandler', () => {
-  const now = new Date('2023-05-02T12:00:00.000Z');
-
   function withTest(
     callback: (params: DataFetchJobHandlerExtension) => Promise<void>,
+    options?: WithTestOptions,
   ): () => Promise<void> {
     async function setupFn(
       connection: Connection,
@@ -94,7 +97,7 @@ describe('DataFetchJobHandler', () => {
       );
       jest
         .spyOn(Writer, 'CSVWriter')
-        .mockImplementation(<T extends C8yData>() => ({} as CSVWriter<T>));
+        .mockImplementation(<T extends C8yData>() => ({}) as CSVWriter<T>);
       const mockUsersService = createMock<UsersService>();
       mockUsersService.getUserCredentials.mockImplementation(
         async (
@@ -132,6 +135,10 @@ describe('DataFetchJobHandler', () => {
 
       const service = module.get<DataFetchJobHandler>(DataFetchJobHandler);
 
+      if (options?.fakeNow) {
+        fakeTime({ now: options.fakeNow, fake: ['Date'] });
+      }
+
       return {
         services: {
           agenda,
@@ -143,14 +150,72 @@ describe('DataFetchJobHandler', () => {
     return setupTest<DataFetchJobHandlerExtension>(setupFn, callback);
   }
 
-  beforeEach(() => {
-    fakeTime({ now, fake: ['Date'] });
-  });
   afterEach(jest.useRealTimers);
 
-  describe('calculates new dates for periodic job', () => {
+  describe('single job', () => {
     it(
-      'when from and to are present',
+      'does not update next sync dates for single job',
+      withTest(async ({ services }) => {
+        const job = (await services.agenda
+          .create<DataFetchJobType>('test', {
+            remoteTaskId: '6457bd33cc892d18243c950b',
+            initiatedByUser: '6457bd3e0c8f5f4e11154b0b',
+            label: 'Single data-fetch task',
+            payload: {
+              originalDateTo: '2023-04-20T12:00:00.000Z',
+              originalDateFrom: '2023-04-015T12:00:00.000Z',
+              currentDateFrom: '2023-04-15T12:00:00.000Z',
+              currentDateTo: '2023-04-20T12:00:00.000Z',
+              data: [
+                {
+                  fileName: 'test-filename',
+                  sensor: {
+                    id: '6457bdc89c2e95661e3c8125',
+                    fragmentType: 'type1',
+                    managedObjectId: 100,
+                  },
+                },
+              ],
+            },
+          })
+          .save()) as Job<DataFetchJobType>;
+
+        const jobResult = await services.service.handle(job);
+        const jobs = await services.agenda.jobs({ name: 'test' });
+        const testJob = jobs[0];
+
+        expect(jobResult.status).toEqual(DataFetchJobStatus.DONE);
+        expect(testJob.attrs.disabled).toBe(true);
+        expect(testJob.attrs.name).toEqual('test');
+        expect(testJob.attrs.repeatInterval).not.toBeDefined();
+        expect(testJob.attrs.data).toMatchObject({
+          remoteTaskId: '6457bd33cc892d18243c950b',
+          label: 'Single data-fetch task',
+          payload: {
+            originalDateTo: '2023-04-20T12:00:00.000Z',
+            originalDateFrom: '2023-04-015T12:00:00.000Z',
+            currentDateFrom: '2023-04-15T12:00:00.000Z',
+            currentDateTo: '2023-04-20T12:00:00.000Z',
+            data: [
+              {
+                fileName: 'test-filename',
+                sensor: {
+                  id: '6457bdc89c2e95661e3c8125',
+                  fragmentType: 'type1',
+                  managedObjectId: 100,
+                },
+                dataId: null,
+              },
+            ],
+          },
+        });
+      }),
+    );
+  });
+
+  describe('periodic job', () => {
+    it.concurrent(
+      'saves next fetch cycle dates',
       withTest(async ({ services }) => {
         const job = (await services.agenda
           .create<DataFetchJobType>('test', {
@@ -158,8 +223,10 @@ describe('DataFetchJobHandler', () => {
             initiatedByUser: '6457bd3e0c8f5f4e11154b0b',
             label: 'Test data-fetch task',
             payload: {
-              dateTo: '2023-04-03T12:00:00.000Z',
-              dateFrom: '2023-04-01T12:00:00.000Z',
+              originalDateTo: '2023-05-03T12:00:00.000Z',
+              originalDateFrom: '2023-03-01T12:00:00.000Z',
+              currentDateFrom: '2023-04-01T12:00:00.000Z',
+              currentDateTo: '2023-04-03T12:00:00.000Z',
               data: [
                 {
                   fileName: 'test-filename',
@@ -171,7 +238,7 @@ describe('DataFetchJobHandler', () => {
                 },
               ],
               periodicData: {
-                fetchDurationSeconds: 0,
+                windowDurationSeconds: 3600 * 24 * 2,
               },
             },
           })
@@ -184,24 +251,283 @@ describe('DataFetchJobHandler', () => {
         const testJob = jobs[0];
 
         expect(testJob.attrs.name).toEqual('test');
-        expect(testJob.attrs.nextRunAt).toEqual(
-          DateTime.fromJSDate(now)
-            .plus(Duration.fromMillis(5000 * 60))
-            .toJSDate(),
-        );
+
+        expect(testJob.attrs.repeatInterval).toEqual('0 */5 * * * *');
+        expect(testJob.attrs.nextRunAt).toBeInstanceOf(Date);
+
         expect(testJob.attrs.data).toMatchObject({
-          remoteTaskId: new Types.ObjectId('6457bd33cc892d18243c950b'),
+          remoteTaskId: '6457bd33cc892d18243c950b',
           label: 'Test data-fetch task',
           payload: expect.objectContaining({
-            dateTo: '2023-04-05T12:00:00.000Z',
-            dateFrom: '2023-04-03T12:00:00.000Z',
+            originalDateTo: '2023-05-03T12:00:00.000Z',
+            originalDateFrom: '2023-03-01T12:00:00.000Z',
+            currentDateFrom: '2023-04-03T12:00:00.000Z',
+            currentDateTo: '2023-04-05T12:00:00.000Z',
             periodicData: {
-              fetchDurationSeconds: 0,
+              windowDurationSeconds: 3600 * 24 * 2,
             },
-            fromAndToDatesOriginallyPresent: true,
           }),
         });
       }),
+    );
+
+    it.concurrent(
+      'disables job when job has reached end of original fetch period',
+      withTest(async ({ services }) => {
+        const job = (await services.agenda
+          .create<DataFetchJobType>('test', {
+            remoteTaskId: '6457bd33cc892d18243c950b',
+            initiatedByUser: '6457bd3e0c8f5f4e11154b0b',
+            label: 'Test data-fetch task',
+            payload: {
+              originalDateTo: '2023-05-03T12:00:00.000Z',
+              originalDateFrom: '2023-03-01T12:00:00.000Z',
+              currentDateFrom: '2023-05-02T12:00:00.000Z',
+              currentDateTo: '2023-05-04T12:00:00.000Z',
+              data: [
+                {
+                  fileName: 'test-filename',
+                  sensor: {
+                    id: '6457bdc89c2e95661e3c8125',
+                    fragmentType: 'type1',
+                    managedObjectId: 100,
+                  },
+                },
+              ],
+              periodicData: {
+                windowDurationSeconds: 3600 * 24 * 2,
+              },
+            },
+          })
+          .repeatEvery('0 */5 * * * *') // Every 5 minutes
+          .save()) as Job<DataFetchJobType>;
+
+        await services.service.handle(job);
+
+        const jobs = await services.agenda.jobs({ name: 'test' });
+        const testJob = jobs[0];
+
+        expect(testJob.attrs.name).toEqual('test');
+
+        expect(testJob.attrs.disabled).toBe(true);
+        expect(testJob.attrs.repeatInterval).toEqual('0 */5 * * * *');
+        expect(testJob.attrs.nextRunAt).toBeInstanceOf(Date);
+
+        expect(testJob.attrs.data).toMatchObject({
+          remoteTaskId: '6457bd33cc892d18243c950b',
+          label: 'Test data-fetch task',
+          payload: expect.objectContaining({
+            originalDateTo: '2023-05-03T12:00:00.000Z',
+            originalDateFrom: '2023-03-01T12:00:00.000Z',
+            currentDateFrom: '2023-05-04T12:00:00.000Z',
+            currentDateTo: '2023-05-06T12:00:00.000Z',
+            periodicData: {
+              windowDurationSeconds: 3600 * 24 * 2,
+            },
+          }),
+        });
+      }),
+    );
+
+    it(
+      'waits for next sync cycle when trying to fetch from the future',
+      withTest(
+        async ({ services }) => {
+          const job = (await services.agenda
+            .create<DataFetchJobType>('test', {
+              remoteTaskId: '6457bd33cc892d18243c950b',
+              initiatedByUser: '6457bd3e0c8f5f4e11154b0b',
+              label: 'Test data-fetch task',
+              payload: {
+                originalDateTo: '2023-05-03T12:00:00.000Z',
+                originalDateFrom: '2023-03-01T12:00:00.000Z',
+                currentDateFrom: '2023-03-01T12:00:00.000Z',
+                currentDateTo: '2023-03-03T12:00:00.000Z',
+                data: [
+                  {
+                    fileName: 'test-filename',
+                    sensor: {
+                      id: '6457bdc89c2e95661e3c8125',
+                      fragmentType: 'type1',
+                      managedObjectId: 100,
+                    },
+                  },
+                ],
+                periodicData: {
+                  windowDurationSeconds: 3600 * 24 * 2,
+                },
+              },
+            })
+            .repeatEvery('0 */5 * * * *') // Every 5 minutes
+            .save()) as Job<DataFetchJobType>;
+
+          const jobResult = await services.service.handle(job);
+
+          const jobs = await services.agenda.jobs({ name: 'test' });
+          const testJob = jobs[0];
+
+          expect(jobResult.result).toBeUndefined();
+          expect(jobResult.status).toBe(
+            DataFetchJobStatus.WAITING_NEXT_FETCH_CYCLE,
+          );
+
+          expect(testJob.attrs.name).toEqual('test');
+          expect(testJob.attrs.repeatInterval).toEqual('0 */5 * * * *');
+          expect(testJob.attrs.nextRunAt).toBeInstanceOf(Date);
+
+          expect(testJob.attrs.data).toMatchObject({
+            remoteTaskId: '6457bd33cc892d18243c950b',
+            label: 'Test data-fetch task',
+            payload: expect.objectContaining({
+              originalDateTo: '2023-05-03T12:00:00.000Z',
+              originalDateFrom: '2023-03-01T12:00:00.000Z',
+              currentDateFrom: '2023-03-01T12:00:00.000Z',
+              currentDateTo: '2023-03-03T12:00:00.000Z',
+              periodicData: {
+                windowDurationSeconds: 3600 * 24 * 2,
+              },
+            }),
+          });
+        },
+        { fakeNow: new Date('2023-02-15T12:00:00.000Z') },
+      ),
+    );
+
+    it(
+      'reschedules nextRunAt if the whole fetch period is not in the past',
+      withTest(
+        async ({ services }) => {
+          const job = (await services.agenda
+            .create<DataFetchJobType>('pft test', {
+              remoteTaskId: '6457bd33cc892d18243c950b',
+              initiatedByUser: '6457bd3e0c8f5f4e11154b0b',
+              label: 'Periodic future data-fetch task test',
+              payload: {
+                originalDateTo: '2023-05-03T12:00:00.000Z',
+                originalDateFrom: '2023-03-01T12:00:00.000Z',
+                currentDateFrom: '2023-03-01T12:00:00.000Z',
+                currentDateTo: '2023-03-03T12:00:00.000Z',
+                data: [
+                  {
+                    fileName: 'test-filename',
+                    sensor: {
+                      id: '6457bdc89c2e95661e3c8125',
+                      fragmentType: 'type1',
+                      managedObjectId: 100,
+                    },
+                  },
+                ],
+                periodicData: {
+                  windowDurationSeconds: 3600 * 24 * 2,
+                },
+              },
+            })
+            .repeatEvery('0 */5 * * * *') // Every 5 minutes
+            .save()) as Job<DataFetchJobType>;
+
+          const jobResult = await services.service.handle(job);
+
+          const jobs = await services.agenda.jobs({
+            name: 'pft test',
+          });
+          const testJob = jobs[0] as Job<DataFetchJobType>;
+
+          expect(jobResult.result).toBeUndefined();
+          expect(jobResult.status).toBe(
+            DataFetchJobStatus.WAITING_NEXT_FETCH_CYCLE,
+          );
+
+          expect(testJob.attrs.data.label).toEqual(
+            'Periodic future data-fetch task test',
+          );
+          expect(testJob.attrs.repeatInterval).toEqual('0 */5 * * * *');
+          expect(testJob.attrs.nextRunAt).toEqual(
+            new Date('2023-03-03T12:00:00.000Z'),
+          );
+
+          expect(testJob.attrs.data).toMatchObject({
+            remoteTaskId: '6457bd33cc892d18243c950b',
+            label: 'Periodic future data-fetch task test',
+            payload: expect.objectContaining({
+              originalDateTo: '2023-05-03T12:00:00.000Z',
+              originalDateFrom: '2023-03-01T12:00:00.000Z',
+              currentDateFrom: '2023-03-01T12:00:00.000Z',
+              currentDateTo: '2023-03-03T12:00:00.000Z',
+              periodicData: {
+                windowDurationSeconds: 3600 * 24 * 2,
+              },
+            }),
+          });
+        },
+        { fakeNow: new Date('2023-03-02T12:00:00.000Z') },
+      ),
+    );
+
+    it(
+      'completes job if last period is shorter than one fetch window length',
+      withTest(
+        async ({ services }) => {
+          const job = (await services.agenda
+            .create<DataFetchJobType>('lpt test', {
+              remoteTaskId: '6457bd33cc892d18243c950b',
+              initiatedByUser: '6457bd3e0c8f5f4e11154b0b',
+              label: 'Last period data fetch test',
+              payload: {
+                originalDateTo: '2023-05-03T12:00:00.000Z',
+                originalDateFrom: '2023-03-01T12:00:00.000Z',
+                currentDateFrom: '2023-05-01T12:00:00.000Z',
+                currentDateTo: '2023-05-05T12:00:00.000Z',
+                data: [
+                  {
+                    fileName: 'test-filename',
+                    sensor: {
+                      id: '6457bdc89c2e95661e3c8125',
+                      fragmentType: 'type1',
+                      managedObjectId: 100,
+                    },
+                  },
+                ],
+                periodicData: {
+                  windowDurationSeconds: 3600 * 24 * 4,
+                },
+              },
+            })
+            .repeatEvery('0 */5 * * * *') // Every 5 minutes
+            .save()) as Job<DataFetchJobType>;
+
+          const jobResult = await services.service.handle(job);
+
+          const jobs = await services.agenda.jobs({
+            name: 'lpt test',
+          });
+          const testJob = jobs[0] as Job<DataFetchJobType>;
+
+          expect(jobResult.status).toBe(DataFetchJobStatus.DONE);
+          expect(testJob.attrs.disabled).toBe(true);
+          expect(testJob.attrs.data.label).toEqual(
+            'Last period data fetch test',
+          );
+          expect(testJob.attrs.repeatInterval).toEqual('0 */5 * * * *');
+          expect(testJob.attrs.nextRunAt).toEqual(
+            new Date('2023-05-02T12:05:00.000Z'),
+          );
+
+          expect(testJob.attrs.data).toMatchObject({
+            remoteTaskId: '6457bd33cc892d18243c950b',
+            label: 'Last period data fetch test',
+            payload: expect.objectContaining({
+              originalDateTo: '2023-05-03T12:00:00.000Z',
+              originalDateFrom: '2023-03-01T12:00:00.000Z',
+              currentDateFrom: '2023-05-05T12:00:00.000Z',
+              currentDateTo: '2023-05-09T12:00:00.000Z',
+              periodicData: {
+                windowDurationSeconds: 3600 * 24 * 4,
+              },
+            }),
+          });
+        },
+        { fakeNow: new Date('2023-05-02T12:00:00.000Z') },
+      ),
     );
   });
 });

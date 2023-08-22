@@ -24,14 +24,20 @@ export interface IJobOptions {
   firstRunAt?: string;
 }
 
-export interface IDataFetchJobPayload extends DataFetchTaskMessagePayload {
-  fromAndToDatesOriginallyPresent?: boolean;
+export type IDataFetchJobPayload = Omit<
+  DataFetchTaskMessagePayload,
+  'dateTo' | 'dateFrom'
+> & {
   periodicData?: {
-    fetchDurationSeconds: number;
+    windowDurationSeconds: number;
   };
-}
+  originalDateFrom: string;
+  originalDateTo?: string;
+  currentDateFrom: string;
+  currentDateTo?: string;
+};
 
-export interface DataFetchJobResult {
+export interface DataFetchJobResultData {
   sensorId: string;
   filePath: string;
   bucket: string;
@@ -41,6 +47,16 @@ export interface DataFetchJobResult {
   pathSeparator?: string;
   dateFrom: string;
   dateTo: string;
+}
+
+export enum DataFetchJobStatus {
+  DONE = 'DONE',
+  WAITING_NEXT_FETCH_CYCLE = 'WAITING_NEXT_FETCH_CYCLE',
+}
+
+export interface DataFetchJobResult {
+  result?: DataFetchJobResultData[];
+  status: DataFetchJobStatus;
 }
 
 export type DataFetchJobType = IBaseJob<IDataFetchJobPayload>;

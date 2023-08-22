@@ -157,3 +157,12 @@ export function nullToUndefined<T>(value: T | null) {
   if (value === null) return undefined;
   return value;
 }
+
+export function exhaustiveCheck(
+  value: never,
+  context: string = 'NoContext',
+): never {
+  throw new Error(
+    `${context} - This shouldn't have been called, got called with ${value}`,
+  );
+}

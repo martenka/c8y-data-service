@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { MessagesTypes, TaskModes, TaskTypes } from './types/messages.types';
+import { MessagesTypes, TaskMode, TaskTypes } from './types/messages.types';
 import { MessagesProducerService } from './messages-producer.service';
 
 import { idToObjectID } from '../../utils/helpers';
@@ -52,18 +52,19 @@ export class MessagesHandlerService {
 
   async handleTaskScheduledMessage(message: MessagesTypes['task.scheduled']) {
     const isPeriodic = isPeriodicWork(message);
-    if (isPeriodic && isNil(message.periodicData.fetchDurationSeconds)) {
-      throw new JobError(
-        'Unable to schedule periodic job without fetchDuration set',
-      );
-    }
 
     switch (message.taskType) {
-      case TaskTypes.DATA_FETCH:
+      case TaskTypes.DATA_FETCH: {
+        if (isPeriodic && isNil(message.periodicData.windowDurationSeconds)) {
+          throw new JobError(
+            'Unable to schedule periodic DATA_FETCH job without window duration set',
+          );
+        }
         return await this.jobsService.scheduleDataFetchJob(
           message as TaskScheduledMessage<DataFetchTaskMessagePayload>,
           isPeriodic,
         );
+      }
       case TaskTypes.OBJECT_SYNC:
         return await this.jobsService.scheduleObjectSyncJob(
           message,
@@ -113,7 +114,7 @@ export class MessagesHandlerService {
     message: MessagesTypes['task.mode'],
   ): Promise<void> {
     switch (message.type) {
-      case TaskModes.DISABLED:
+      case TaskMode.DISABLED:
         const disabledTasks = await this.jobsService.setDisabledStatus(
           message.tasks.map((task) => ({
             taskId: task.taskId,
@@ -122,7 +123,7 @@ export class MessagesHandlerService {
         );
 
         this.messagesProducerService.sendTaskModeMessage({
-          type: TaskModes.DISABLED,
+          type: TaskMode.DISABLED,
           tasks: disabledTasks.map((task) => ({ taskId: task.taskId })),
         });
 
@@ -130,7 +131,7 @@ export class MessagesHandlerService {
           `Disabled tasks: ${disabledTasks.map((task) => task.taskId)}`,
         );
         break;
-      case TaskModes.ENABLED:
+      case TaskMode.ENABLED:
         const enabledTasks = await this.jobsService.setDisabledStatus(
           message.tasks.map((task) => ({
             taskId: task.taskId,
@@ -138,7 +139,7 @@ export class MessagesHandlerService {
           })),
         );
         this.messagesProducerService.sendTaskModeMessage({
-          type: TaskModes.ENABLED,
+          type: TaskMode.ENABLED,
           tasks: enabledTasks.map((task) => ({ taskId: task.taskId })),
         });
 
