@@ -1,15 +1,21 @@
 import { isNil } from '@nestjs/common/utils/shared.utils';
 
-export function notNil<T>(value: T): value is NonNullable<T> {
+export function isPresent<T>(value: T): value is NonNullable<T> {
   return !isNil(value);
 }
 
+export function notPresent<T>(
+  value: T | undefined | null,
+): value is undefined | null {
+  return isNil(value);
+}
+
 export function isArray(data: unknown): data is Array<unknown> {
-  return notNil(data) && Array.isArray(data);
+  return isPresent(data) && Array.isArray(data);
 }
 
 export function ensureArray<T>(value: T | T[]): Array<T> {
-  if (isNil(value)) {
+  if (notPresent(value)) {
     return [];
   }
 

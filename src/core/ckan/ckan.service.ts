@@ -13,7 +13,7 @@ import {
 import FormData from 'form-data';
 import fetch from 'node-fetch';
 import * as https from 'https';
-import { notNil } from '../../utils/validation';
+import { isPresent } from '../../utils/validation';
 
 @Injectable()
 export class CkanService implements CkanClient {
@@ -89,7 +89,7 @@ export class CkanService implements CkanClient {
   ): Promise<CkanBaseResponse<CkanResource>> {
     const parsedParams: CkanCreateResourceParameters = {
       ...parameters,
-      name: parameters.name.toLowerCase().replace(/\W+/g, '_'),
+      name: parameters.name?.toLowerCase().replace(/\W+/g, '_'),
     };
 
     const url = new URL(
@@ -152,7 +152,7 @@ export class CkanService implements CkanClient {
     const formData = new FormData();
     Object.keys(rest).forEach((key) => {
       const value = rest[key];
-      if (notNil(value)) {
+      if (isPresent(value)) {
         formData.append(key, value);
       }
     });

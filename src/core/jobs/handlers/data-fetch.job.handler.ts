@@ -21,8 +21,8 @@ import { CSVWriter } from '../../cumulocity/filewriter/csv-writer';
 import path from 'path';
 import { ApplicationConfigService } from '../../application-config/application-config.service';
 import { Types } from 'mongoose';
-import { notNil } from '../../../utils/validation';
-import { isNil, isNumber, isString } from '@nestjs/common/utils/shared.utils';
+import { isPresent, notPresent } from '../../../utils/validation';
+import { isNumber, isString } from '@nestjs/common/utils/shared.utils';
 import { DateTime, Interval } from 'luxon';
 import { parseExpression } from 'cron-parser';
 import humanInterval from 'human-interval';
@@ -75,7 +75,7 @@ export class DataFetchJobHandler {
       new Types.ObjectId(job.attrs.data.initiatedByUser),
     );
 
-    if (isNil(credentials)) {
+    if (notPresent(credentials)) {
       throw new JobError(
         `User ${job.attrs.data.initiatedByUser} Cumulocity credentials not found!`,
       );
@@ -93,7 +93,7 @@ export class DataFetchJobHandler {
       ? DataFetchJobStatus.DONE
       : DataFetchJobStatus.WAITING_NEXT_FETCH_CYCLE;
 
-    if (notNil(fetchPeriodData.nextJobRunAt)) {
+    if (isPresent(fetchPeriodData.nextJobRunAt)) {
       job.attrs.nextRunAt = fetchPeriodData.nextJobRunAt;
     }
 
@@ -159,8 +159,10 @@ export class DataFetchJobHandler {
     }
 
     if (fetchPeriodData.shouldSaveDates) {
-      job.attrs.data.payload.currentDateFrom =
-        fetchPeriodData.nextCycleDateFrom;
+      if (isPresent(fetchPeriodData.nextCycleDateFrom)) {
+        job.attrs.data.payload.currentDateFrom =
+          fetchPeriodData.nextCycleDateFrom;
+      }
       job.attrs.data.payload.currentDateTo = fetchPeriodData.nextCycleDateTo;
     }
 
@@ -194,7 +196,7 @@ export class DataFetchJobHandler {
       durationInSeconds = pattern;
     }
     if (isString(pattern)) {
-      if (isNil(durationInSeconds)) {
+      if (notPresent(durationInSeconds)) {
         try {
           const cron = parseExpression(pattern);
           const prevDate = cron.prev().toDate();
@@ -204,8 +206,9 @@ export class DataFetchJobHandler {
           );
         } catch (e) {}
       }
-      if (isNil(durationInSeconds) && isValidHumanInterval(pattern)) {
-        durationInSeconds = humanInterval(pattern) / 1000;
+      if (notPresent(durationInSeconds) && isValidHumanInterval(pattern)) {
+        const interval = humanInterval(pattern);
+        durationInSeconds = isPresent(interval) ? interval / 1000 : undefined;
       }
     }
     return durationInSeconds;
@@ -218,32 +221,39 @@ export class DataFetchJobHandler {
     const windowDurationSeconds =
       jobPayload.periodicData?.windowDurationSeconds;
 
-    if (isNil(dateFrom)) {
+    if (notPresent(dateFrom)) {
       throw new JobError('Data fetch starting date must be present!');
     }
-    if (isNil(windowDurationSeconds) && isNil(dateTo)) {
+    if (notPresent(windowDurationSeconds) && notPresent(dateTo)) {
       throw new JobError(
         'If data fetch is not periodic then both start and end times must be defined!',
       );
     }
 
-    if (notNil(windowDurationSeconds)) {
+    if (isPresent(windowDurationSeconds)) {
       const fetchTo = DateTime.fromISO(dateFrom)
         .plus({ second: windowDurationSeconds })
         .toUTC()
         .toISO();
 
+      if (notPresent(fetchTo)) {
+        throw new Error(
+          `Current cycle end date could not be calculated from start date of ${dateFrom} and window duration in seconds of ${windowDurationSeconds}`,
+        );
+      }
       const nextCycleDateFrom = fetchTo;
 
-      const nextCycleDateTo = DateTime.fromISO(nextCycleDateFrom)
-        .plus({
-          second: windowDurationSeconds,
-        })
-        .toUTC()
-        .toISO();
+      const nextCycleDateTo = nullToUndefined(
+        DateTime.fromISO(nextCycleDateFrom)
+          .plus({
+            second: windowDurationSeconds,
+          })
+          .toUTC()
+          .toISO(),
+      );
 
       const fetchJobWillComplete =
-        notNil(jobPayload.originalDateTo) &&
+        isPresent(jobPayload.originalDateTo) &&
         new Date(fetchTo) >= new Date(jobPayload.originalDateTo);
 
       const fetchAvailability = this.getFetchPossibility({
@@ -264,7 +274,7 @@ export class DataFetchJobHandler {
       };
     }
 
-    if (isNil(dateTo) || isNil(dateFrom)) {
+    if (notPresent(dateTo) || notPresent(dateFrom)) {
       throw new JobError(
         'Beginning and end dates must be present for non periodic fetch!',
       );
@@ -292,8 +302,10 @@ export class DataFetchJobHandler {
   private getFetchPossibility(input: CanFetchInput): CanFetch {
     const currentTimestamp = new Date();
 
-    const fetchPeriodAvailable = notNil(input.dateTo)
-      ? input.dateTo <= currentTimestamp || input.fetchJobWillComplete
+    const fetchJobWillComplete = input.fetchJobWillComplete ?? true;
+
+    const fetchPeriodAvailable = isPresent(input.dateTo)
+      ? input.dateTo <= currentTimestamp || fetchJobWillComplete
       : true;
     const canFetch = input.dateFrom < currentTimestamp && fetchPeriodAvailable;
 

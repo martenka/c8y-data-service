@@ -12,10 +12,10 @@ import {
   ObjectTypes,
   Sensor,
 } from '../../messages/types/message-types/task/types';
-import { isNil } from '@nestjs/common/utils/shared.utils';
 import { MessagesProducerService } from '../../messages/messages-producer.service';
 import { TaskSteps, TaskTypes } from '../../messages/types/messages.types';
 import { isGroup } from '../../messages/guards/guards';
+import { notPresent } from '../../../utils/validation';
 
 @Injectable()
 export class ObjectSyncJobHandler {
@@ -29,6 +29,13 @@ export class ObjectSyncJobHandler {
     const credentials = await this.usersService.getUserCredentials(
       new Types.ObjectId(job.attrs.data.initiatedByUser),
     );
+
+    if (notPresent(credentials)) {
+      throw new Error(
+        `Unable to get credentials for user: ${job.attrs.data.initiatedByUser}`,
+      );
+    }
+
     const auth: ICredentials = {
       user: credentials.username,
       password: credentials.password,
@@ -110,7 +117,7 @@ export class ObjectSyncJobHandler {
     const result: string[] = [];
     try {
       const baseUrl = client.core.baseUrl;
-      if (isNil(baseUrl)) {
+      if (notPresent(baseUrl)) {
         return [];
       }
       const fetchResponse = await client.core.fetch(

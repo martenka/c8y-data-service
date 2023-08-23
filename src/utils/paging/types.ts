@@ -66,7 +66,7 @@ export interface C8yFetcher<T extends C8yData, V> {
     client: Client,
     query: C8yQueryParams<T>,
     lastPage: IResultList<T> | undefined,
-  ) => Promise<IResultList<T>>;
+  ) => Promise<IResultList<T> | undefined>;
   pageHandler: (client: Client, page: IResultList<T>) => Promise<V[]>;
   hasNextPage: (pageInfo: Paging<T>) => boolean;
   fetchData: (

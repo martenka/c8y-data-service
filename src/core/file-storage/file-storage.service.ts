@@ -135,7 +135,7 @@ export class FileStorageService implements OnModuleInit {
   }
 
   async getObject(bucket: string, path: string): Promise<buffer.Buffer> {
-    const chunks = [];
+    const chunks: buffer.Buffer[] = [];
     const stream = await this.minioService.client.getObject(bucket, path);
 
     return new Promise((resolve, reject) => {

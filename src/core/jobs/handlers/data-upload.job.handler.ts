@@ -1,7 +1,6 @@
 import { DataUploadJobType, JobHandler } from '../types/types';
 import { Job } from '@hokify/agenda';
 import { CkanService } from '../../ckan/ckan.service';
-import { isNil } from '@nestjs/common/utils/shared.utils';
 import { Injectable, Logger } from '@nestjs/common';
 import { CkanExtra } from '../../ckan/types/client';
 import { ApplicationConfigService } from '../../application-config/application-config.service';
@@ -10,7 +9,7 @@ import {
   tryStringify,
 } from '../../../utils/helpers';
 import { FileStorageService } from '../../file-storage/file-storage.service';
-import { notNil } from '../../../utils/validation';
+import { isPresent, notPresent } from '../../../utils/validation';
 
 @Injectable()
 export class DataUploadJobHandler
@@ -39,7 +38,7 @@ export class DataUploadJobHandler
       const fileMetadata = file.metadata;
       let packageExtras: CkanExtra[] = [
         { key: 'ObjectID', value: fileMetadata.managedObjectId },
-        { key: 'ObjectName', value: fileMetadata.managedObjectName },
+        { key: 'ObjectName', value: fileMetadata.managedObjectName ?? 'N/A' },
         { key: 'DateFrom', value: fileMetadata.dateFrom },
         { key: 'DateTo', value: fileMetadata.dateTo },
         { key: 'Value Type', value: fileMetadata.valueFragmentType },
@@ -50,7 +49,7 @@ export class DataUploadJobHandler
       ];
 
       addCustomAttributesToExtras(file.customAttributes, packageExtras);
-      packageExtras = packageExtras.filter((extra) => notNil(extra.value));
+      packageExtras = packageExtras.filter((extra) => isPresent(extra.value));
 
       const ckanPackageResponse = await this.ckanClient.createPackage({
         name: file.fileName,
@@ -104,7 +103,7 @@ export class DataUploadJobHandler
   ): Promise<'GROUP_CREATED' | 'CREATION_NOT_NEEDED'> {
     const existingGroup = await this.ckanClient.findGroup(groupName);
 
-    if (isNil(existingGroup?.result)) {
+    if (notPresent(existingGroup?.result)) {
       const createdGroup = await this.ckanClient.createGroup({
         name: groupName,
         description: groupDescription,

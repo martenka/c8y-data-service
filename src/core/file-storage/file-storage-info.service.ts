@@ -2,7 +2,7 @@ import { IFileStorageInfoGenerator } from './types/types';
 import { Injectable } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { randomUUID } from 'crypto';
-import { notNil } from '../../utils/validation';
+import { isPresent } from '../../utils/validation';
 
 @Injectable()
 export class GenericFileStorageInfoService
@@ -13,7 +13,7 @@ export class GenericFileStorageInfoService
   }
 
   getPath(prefix?: string): string {
-    return `${notNil(prefix) ? prefix + '/' : ''}${DateTime.now()
+    return `${isPresent(prefix) ? prefix + '/' : ''}${DateTime.now()
       .toUTC()
       .toFormat('yyyy/MM/dd')}`;
   }

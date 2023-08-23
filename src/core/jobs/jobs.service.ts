@@ -3,8 +3,8 @@ import { Agenda, Job } from '@hokify/agenda';
 import { Types } from 'mongoose';
 import { Filter, Sort } from 'mongodb';
 import { IJobParameters } from '@hokify/agenda/dist/types/JobParameters';
-import { isEmpty, isNil } from '@nestjs/common/utils/shared.utils';
-import { ensureArray, notNil } from '../../utils/validation';
+import { isEmpty } from '@nestjs/common/utils/shared.utils';
+import { ensureArray, isPresent, notPresent } from '../../utils/validation';
 import {
   DataFetchJobType,
   IBaseJob,
@@ -64,7 +64,7 @@ export class JobsService implements OnModuleDestroy {
   ): Promise<Job<T>> {
     const job = this.agenda.create(type, data);
 
-    if (notNil(options?.firstRunAt)) {
+    if (isPresent(options) && isPresent(options.firstRunAt)) {
       job.schedule(options.firstRunAt);
       options.skipImmediate = true;
     }
@@ -85,10 +85,11 @@ export class JobsService implements OnModuleDestroy {
     runAt: string | Date,
     data?: T,
   ): Promise<Job<T>> {
-    return (await this.agenda
-      .create<T>(type, data)
-      .schedule(runAt)
-      .save()) as Job<T>;
+    const job = isPresent(data)
+      ? this.agenda.create(type, data)
+      : this.agenda.create(type);
+
+    return (await job.schedule(runAt).save()) as Job<T>;
   }
 
   /**
@@ -110,6 +111,12 @@ export class JobsService implements OnModuleDestroy {
     jobInput: TaskScheduledMessage<DataFetchTaskMessagePayload>,
     isPeriodic = false,
   ): Promise<Job<DataFetchJobType>> {
+    if (notPresent(jobInput.payload.dateFrom)) {
+      throw new Error(
+        'Cannot schedule DataFetch job without starting date set',
+      );
+    }
+
     const jobPayload: IDataFetchJobPayload = {
       originalDateFrom: jobInput.payload.dateFrom,
       originalDateTo: jobInput.payload.dateTo,
@@ -121,6 +128,14 @@ export class JobsService implements OnModuleDestroy {
     const jobData = this.mapJobData(jobInput, jobPayload);
 
     if (isPeriodic) {
+      if (
+        notPresent(jobInput.periodicData) ||
+        notPresent(jobInput.periodicData?.windowDurationSeconds)
+      ) {
+        throw new Error(
+          'Cannot schedule periodic DataFetch job without time window duration set',
+        );
+      }
       jobData.payload.periodicData = {
         windowDurationSeconds: jobInput.periodicData.windowDurationSeconds,
       };
@@ -169,7 +184,7 @@ export class JobsService implements OnModuleDestroy {
     const inCompleteFiles: string[] = [];
     for (const file of jobInput.payload.files) {
       if (
-        isNil(file.metadata.valueFragmentDescription) ||
+        notPresent(file.metadata.valueFragmentDescription) ||
         file.metadata.valueFragmentDescription === ''
       ) {
         inCompleteFiles.push(file.fileName);
@@ -268,7 +283,7 @@ export class JobsService implements OnModuleDestroy {
           taskType: job.attrs.name,
         }),
       )
-      .filter(notNil);
+      .filter(isPresent);
   }
 
   private async scheduleJob<T extends TaskScheduledMessage, P extends IBaseJob>(
@@ -282,6 +297,11 @@ export class JobsService implements OnModuleDestroy {
         firstRunAt: jobInput.firstRunAt,
         ...inputOptions,
       };
+      if (notPresent(jobInput.periodicData)) {
+        throw new Error(
+          'Unable to schedule periodic job without periodicData being present',
+        );
+      }
       return this.schedulePeriodicJob<P>(
         jobInput.taskType,
         jobInput.periodicData.pattern,

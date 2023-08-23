@@ -6,19 +6,25 @@ import {
   FetchedData,
 } from '../../utils/paging/types';
 import { Client, IResultList, Paging } from '@c8y/client';
-import { isNil } from '@nestjs/common/utils/shared.utils';
 import { FileWriter } from './filewriter/types';
+import { notPresent } from '../../utils/validation';
+import { Logger } from '@nestjs/common';
 
 export abstract class DownloadService<T extends C8yData, V = unknown>
   implements C8yFetcher<T, V>
 {
+  private readonly logger = new Logger('DownloadService');
+
   abstract fetchPage(
     client: Client,
     query: C8yQueryParams<T>,
     lastPage: IResultList<T> | undefined,
-  ): Promise<IResultList<T>>;
+  ): Promise<IResultList<T> | undefined>;
 
-  hasNextPage(pageInfo: Paging<T>): boolean {
+  hasNextPage(pageInfo: Paging<T> | undefined): boolean {
+    if (notPresent(pageInfo)) {
+      return false;
+    }
     return pageInfo.currentPage < pageInfo.totalPages;
   }
 
@@ -36,7 +42,7 @@ export abstract class DownloadService<T extends C8yData, V = unknown>
     const maxPages = options?.maxPages ?? Number.MAX_SAFE_INTEGER;
 
     while (
-      (isNil(currentPage) || this.hasNextPage(currentPage.paging)) &&
+      (notPresent(currentPage) || this.hasNextPage(currentPage?.paging)) &&
       pageCounter < maxPages
     ) {
       currentPage = await this.fetchPage(
@@ -44,6 +50,12 @@ export abstract class DownloadService<T extends C8yData, V = unknown>
         { ...query, withTotalPages: true },
         currentPage,
       );
+      if (notPresent(currentPage)) {
+        this.logger.warn(
+          `Undefined page received. Stopping fetching on page ${pageCounter}.`,
+        );
+        break;
+      }
       await fileWriter?.write(currentPage);
 
       const handledPage = await this.pageHandler(client, currentPage);

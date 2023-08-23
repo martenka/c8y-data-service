@@ -1,4 +1,4 @@
-import { notNil } from './validation';
+import { isPresent, notPresent } from './validation';
 import { ParsedPromisesResult } from './types';
 import { Types } from 'mongoose';
 import { Buffer } from 'buffer';
@@ -8,7 +8,6 @@ import { MessagesProducerService } from '../core/messages/messages-producer.serv
 import { TaskScheduledMessage } from '../core/messages/types/message-types/task/types';
 import { CustomAttributes } from '../models/types/types';
 import { CkanExtra } from '../core/ckan/types/client';
-import { isNil } from '@nestjs/common/utils/shared.utils';
 
 type TestType =
   | string
@@ -18,6 +17,9 @@ type TestType =
   | Buffer
   | Uint8Array;
 
+/**
+ * Throws error if given input cannot be converted to ObjectID
+ */
 export function idToObjectID<T extends TestType | TestType[]>(
   id: T,
 ): T extends TestType[] ? Types.ObjectId[] : Types.ObjectId;
@@ -32,7 +34,7 @@ export function idToObjectID(
     return new Types.ObjectId(id);
   } catch (e) {
     if (e instanceof BSONError) {
-      return undefined;
+      throw new Error(`Unable to convert input: ${id} to ObjectID`);
     }
     throw e;
   }
@@ -54,7 +56,7 @@ export function pickBy<T extends object>(
 }
 
 export function removeNilProperties<T extends object>(value: T): Partial<T> {
-  return pickBy(value, (element) => notNil(element));
+  return pickBy(value, (element) => isPresent(element));
 }
 
 export async function awaitAllPromises<T>(
@@ -81,7 +83,7 @@ export async function withTaskSchedulingErrorHandler<T>(
   handler: () => Promise<T>,
   messageProducerService: MessagesProducerService,
   message: TaskScheduledMessage,
-): Promise<T> {
+): Promise<T | void> {
   try {
     return await handler();
   } catch (e) {
@@ -109,6 +111,7 @@ export async function withTaskSchedulingErrorHandler<T>(
         },
       });
     }
+    return Promise.resolve();
   }
 }
 
@@ -121,12 +124,12 @@ export function addCustomAttributesToExtras(
   extras: CkanExtra[],
   path = '',
 ) {
-  if (isNil(attributes) || Object.keys(attributes).length === 0) {
+  if (notPresent(attributes) || Object.keys(attributes).length === 0) {
     return;
   }
   Object.keys(attributes).forEach((key) => {
     const value = attributes[key];
-    if (isNil(value)) {
+    if (notPresent(value)) {
       return;
     }
     if (typeof value === 'string') {
@@ -144,7 +147,7 @@ export function addCustomAttributesToExtras(
 export function tryStringify(value: unknown): string | undefined {
   const types = ['string', 'number', 'boolean'];
   if (types.includes(typeof value)) {
-    return value.toString();
+    return value?.toString();
   }
   try {
     return JSON.stringify(value);

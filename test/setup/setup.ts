@@ -16,6 +16,10 @@ export type TestFn<SetupResult extends object> = (
   params: SetupResult,
 ) => Promise<void>;
 
+export type CleanupFn<SetupResult extends object> = (
+  params: SetupResult | undefined,
+) => Promise<void>;
+
 /**
  * Sets up the MongoDB connection for testing and after executing the callback,
  * closes the connection and db instance
@@ -26,7 +30,7 @@ export type TestFn<SetupResult extends object> = (
 export function setupTest<SetupReturn extends object>(
   setUpTestFn: SetupTestFn<SetupReturn>,
   testFn: TestFn<SetupReturn>,
-  cleanupFn?: TestFn<SetupReturn>,
+  cleanupFn?: CleanupFn<SetupReturn>,
 ): () => Promise<void> {
   return async () => {
     const instance = await MongoMemoryServer.create();
@@ -44,7 +48,7 @@ export function setupTest<SetupReturn extends object>(
       });
     });
 
-    let setupResult: SetupReturn;
+    let setupResult: SetupReturn | undefined = undefined;
     try {
       setupResult = await setUpTestFn(connection);
       await testFn(setupResult);

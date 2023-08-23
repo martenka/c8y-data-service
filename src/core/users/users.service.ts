@@ -9,8 +9,8 @@ import {
 import { UserMessage } from '../messages/types/message-types/user/types';
 import { Types } from 'mongoose';
 import { UserService } from '@c8y/client';
-import { notNil } from '../../utils/validation';
-import { isNil } from '@nestjs/common/utils/shared.utils';
+import { isPresent, notPresent } from '../../utils/validation';
+import { nullToUndefined } from '../../utils/helpers';
 
 @Injectable()
 export class UsersService {
@@ -36,13 +36,13 @@ export class UsersService {
     return result;
   }
 
-  async deleteUser(id: Types.ObjectId): Promise<UserDocument> {
+  async deleteUser(id: Types.ObjectId): Promise<UserDocument | undefined> {
     const result = await this.userModel.findByIdAndDelete(id).exec();
     const deletedUserId = result?.toObject()?._id;
-    if (notNil(deletedUserId)) {
+    if (isPresent(deletedUserId)) {
       this.logger.log(`Deleted user with id: ${deletedUserId}`);
     }
-    return result;
+    return nullToUndefined(result);
   }
 
   async getUserCredentials(
@@ -52,7 +52,7 @@ export class UsersService {
       .findById(id, { c8yCredentials: 1 })
       .lean(true)
       .exec();
-    if (isNil(user)) {
+    if (notPresent(user)) {
       throw new Error(`User with id ${id?.toString()} not found!`);
     }
     return user?.c8yCredentials;

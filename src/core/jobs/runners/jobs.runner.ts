@@ -25,7 +25,7 @@ import {
 import { ObjectSyncJobHandler } from '../handlers/object-sync.job.handler';
 import { VisibilityStateChangeJobHandler } from '../handlers/visibilitystate-change-job.handler';
 import { DataUploadJobHandler } from '../handlers/data-upload.job.handler';
-import { isNil } from '@nestjs/common/utils/shared.utils';
+import { notPresent } from '../../../utils/validation';
 
 @Injectable()
 export class JobsRunner {
@@ -48,7 +48,7 @@ export class JobsRunner {
       const taskStatus: TaskSteps = dataFetchJobStatusToTaskSteps(
         jobResult.status,
       );
-      if (!isNil(jobResult.result)) {
+      if (!notPresent(jobResult.result)) {
         messagePayload = {
           sensors: jobResult.result,
           completedAt: new Date().toISOString(),

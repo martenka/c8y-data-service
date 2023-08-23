@@ -1,4 +1,4 @@
-import { notNil } from './validation';
+import { isPresent } from './validation';
 import { TaskScheduledMessage } from '../core/messages/types/message-types/task/types';
 import { VisibilityState } from '../core/messages/types/messages.types';
 import { ApplicationConfigService } from '../core/application-config/application-config.service';
@@ -6,7 +6,7 @@ import { ApplicationConfigService } from '../core/application-config/application
 export function isPeriodicWork(
   task?: Partial<Pick<TaskScheduledMessage, 'periodicData'>>,
 ) {
-  return notNil(task?.periodicData);
+  return isPresent(task?.periodicData);
 }
 
 export function getVisibilityStateNewBucket(

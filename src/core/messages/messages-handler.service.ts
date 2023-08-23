@@ -7,8 +7,7 @@ import { idToObjectID } from '../../utils/helpers';
 import { FileStorageService } from '../file-storage/file-storage.service';
 
 import { ApplicationConfigService } from '../application-config/application-config.service';
-import { isNil } from '@nestjs/common/utils/shared.utils';
-import { notNil } from '../../utils/validation';
+import { isPresent, notPresent } from '../../utils/validation';
 import { UsersService } from '../users/users.service';
 import { JobsService } from '../jobs/jobs.service';
 
@@ -36,13 +35,13 @@ export class MessagesHandlerService {
 
   async handleUserMessage(message: MessagesTypes['user.user']) {
     const id = idToObjectID(message.id);
-    if (isNil(id)) {
+    if (notPresent(id)) {
       this.logger.warn(
         `Given user id of ${message.id} is not convertable to ObjectID!`,
       );
       return;
     }
-    if (notNil(message.deletedAt)) {
+    if (isPresent(message.deletedAt)) {
       await this.usersService.deleteUser(id);
       return;
     }
@@ -55,7 +54,10 @@ export class MessagesHandlerService {
 
     switch (message.taskType) {
       case TaskTypes.DATA_FETCH: {
-        if (isPeriodic && isNil(message.periodicData.windowDurationSeconds)) {
+        if (
+          isPeriodic &&
+          notPresent(message.periodicData?.windowDurationSeconds)
+        ) {
           throw new JobError(
             'Unable to schedule periodic DATA_FETCH job without window duration set',
           );
@@ -92,7 +94,7 @@ export class MessagesHandlerService {
 
     message.files.forEach((file) => {
       const bucketFiles: string[] | undefined = bucketFilesMap.get(file.bucket);
-      if (isNil(bucketFiles)) {
+      if (notPresent(bucketFiles)) {
         bucketFilesMap.set(file.bucket, [file.path]);
       } else {
         bucketFiles.push(file.path);
